@@ -1,5 +1,5 @@
 /* $Id$ */
-/* 
+/*
  * Copyright (C)2003-2006 Benny Prijono <benny@prijono.org>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 #ifndef __PJ_CONFIG_H__
 #define __PJ_CONFIG_H__
@@ -55,6 +55,8 @@
 #  include <pj/compat/os_darwinos.h>
 #elif defined(PJ_RTEMS) && PJ_RTEMS!=0
 #  include <pj/compat/os_rtems.h>
+#elif defined(PJ_SYMBIAN) && PJ_SYMBIAN!=0
+#  include <pj/compat/os_symbian.h>
 #else
 #  error "Please specify target os."
 #endif
@@ -230,7 +232,7 @@
  *
  * Default: 8192
  */
-#ifndef PJ_THREAD_DEFAULT_STACK_SIZE 
+#ifndef PJ_THREAD_DEFAULT_STACK_SIZE
 #  define PJ_THREAD_DEFAULT_STACK_SIZE    8192
 #endif
 
@@ -269,13 +271,13 @@
 
 /**
  * Constants for declaring the maximum handles that can be supported by
- * a single IOQ framework. This constant might not be relevant to the 
- * underlying I/O queue impelementation, but still, developers should be 
+ * a single IOQ framework. This constant might not be relevant to the
+ * underlying I/O queue impelementation, but still, developers should be
  * aware of this constant, to make sure that the program will not break when
  * the underlying implementation changes.
  *
  * For implementation based on select(), the value here will be used as the
- * maximum number of socket handles passed to select() (i.e. FD_SETSIZE will 
+ * maximum number of socket handles passed to select() (i.e. FD_SETSIZE will
  * be set to this value).
  *
  * Default: if FD_SETSIZE is defined and the value is greather than 256,
@@ -295,8 +297,8 @@
  * things to ensure thread safety of handle unregistration operation by
  * employing reference counter to each handle.
  *
- * In addition, the ioqueue will preallocate memory for the handles, 
- * according to the maximum number of handles that is specified during 
+ * In addition, the ioqueue will preallocate memory for the handles,
+ * according to the maximum number of handles that is specified during
  * ioqueue creation.
  *
  * All applications would normally want this enabled, but you may disable
@@ -434,7 +436,7 @@
  * functions to compare alnum strings. On some systems, they're faster
  * then stricmp/strcasecmp, but they can be slower on other systems.
  * When disabled, pjlib will fallback to stricmp/strnicmp.
- * 
+ *
  * Default: 0
  */
 #ifndef PJ_HAS_STRICMP_ALNUM
