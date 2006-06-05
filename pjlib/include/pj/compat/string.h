@@ -67,9 +67,18 @@
 #define pj_ansi_strncasecmp	strncasecmp
 #define pj_ansi_strnicmp	strncasecmp
 #define pj_ansi_sprintf		sprintf
-#define pj_ansi_snprintf	snprintf
 #define pj_ansi_vsprintf	vsprintf
+
+#if defined(PJ_HAS_NO_SNPRINTF) && PJ_HAS_NO_SNPRINTF != 0
+#   include <pj/types.h>
+#   include <pj/compat/stdarg.h>
+    PJ_DECL(int) snprintf(char *s1, pj_size_t len, const char *s2, ...);
+    PJ_DECL(int) vsnprintf(char *s1, pj_size_t len, const char *s2, va_list arg);
+#endif
+
+#define pj_ansi_snprintf	snprintf
 #define pj_ansi_vsnprintf	vsnprintf
+
 
 #define pj_unicode_strcmp	wcscmp
 #define pj_unicode_strncmp	wcsncmp
