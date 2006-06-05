@@ -20,6 +20,9 @@
 #include <pj/compat/string.h>
 #include <pj/ctype.h>
 
+#if defined(PJ_HAS_STRING_H) && PJ_HAS_STRING_H != 0
+/* Nothing to do */
+#else
 PJ_DEF(int) strcasecmp(const char *s1, const char *s2)
 {
     while ((*s1==*s2) || (pj_tolower(*s1)==pj_tolower(*s2))) {
@@ -41,4 +44,26 @@ PJ_DEF(int) strncasecmp(const char *s1, const char *s2, int len)
     }
     return (pj_tolower(*s1) < pj_tolower(*s2)) ? -1 : 1;
 }
+#endif
+
+#if defined(PJ_HAS_NO_SNPRINTF) && PJ_HAS_NO_SNPRINTF != 0
+
+PJ_DEF(int) snprintf(char *s1, pj_size_t len, const char *s2, ...)
+{
+    int ret;
+    
+    va_list arg;
+    va_start(arg, s2);
+    ret = vsprintf(s1, s2, arg);
+    va_end(arg);
+    
+    return ret;
+}
+
+PJ_DEF(int) vsnprintf(char *s1, pj_size_t len, const char *s2, va_list arg)
+{
+    return vsprintf(s1,s2,arg);
+}
+
+#endif
 
