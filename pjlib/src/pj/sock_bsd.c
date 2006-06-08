@@ -28,9 +28,23 @@
  * Address families conversion.
  * The values here are indexed based on pj_addr_family.
  */
+#ifdef AF_UNIX
 const pj_uint16_t PJ_AF_UNIX	= AF_UNIX;
+const pj_uint16_t PJ_AF_LOCAL	= AF_UNIX;
+#else
+const pj_uint16_t PJ_AF_UNIX	= 0xFFFF;
+#ifdef AF_LOCAL
+const pj_uint16_t PJ_AF_LOCAL	= AF_LOCAL;
+#else
+const pj_uint16_t PJ_AF_LOCAL	= 0xFFFF;
+#endif
+#endif
 const pj_uint16_t PJ_AF_INET	= AF_INET;
+#ifdef AF_INET6
 const pj_uint16_t PJ_AF_INET6	= AF_INET6;
+#else
+const pj_uint16_t PJ_AF_INET6	= 0xFFFF;
+#endif
 #ifdef AF_PACKET
 const pj_uint16_t PJ_AF_PACKET	= AF_PACKET;
 #else
@@ -49,7 +63,11 @@ const pj_uint16_t PJ_AF_IRDA	= 0xFFFF;
 const pj_uint16_t PJ_SOCK_STREAM	= SOCK_STREAM;
 const pj_uint16_t PJ_SOCK_DGRAM	= SOCK_DGRAM;
 const pj_uint16_t PJ_SOCK_RAW	= SOCK_RAW;
+#ifdef SOCK_RDM
 const pj_uint16_t PJ_SOCK_RDM	= SOCK_RDM;
+#else
+const pj_uint16_t PJ_SOCK_RDM	= 0xFFFF;
+#endif
 
 /*
  * Socket level values.
@@ -77,7 +95,11 @@ const pj_uint16_t PJ_SOL_IPV6	= 0xFFFF;
 #endif
 
 /* optname values. */
+#ifdef SO_TYPE
 const pj_uint16_t PJ_SO_TYPE    = SO_TYPE;
+#else
+const pj_uint16_t PJ_SO_TYPE    = 0xFFFF;
+#endif
 const pj_uint16_t PJ_SO_RCVBUF  = SO_RCVBUF;
 const pj_uint16_t PJ_SO_SNDBUF  = SO_SNDBUF;
 
@@ -461,8 +483,13 @@ PJ_DEF(pj_status_t) pj_sock_sendto(pj_sock_t sock,
     PJ_CHECK_STACK();
     PJ_ASSERT_RETURN(len, PJ_EINVAL);
 
+#if !defined(PJ_SYMBIAN) && PJ_SYMBIAN == 0
     *len = sendto(sock, (const char*)buf, *len, flags, 
 		  (const struct sockaddr*)to, tolen);
+#else
+    *len = sendto(sock, (const char*)buf, *len, flags, 
+		  (struct sockaddr*)to, tolen);
+#endif
 
     if (*len < 0) 
 	return PJ_RETURN_OS_ERROR(pj_get_native_netos_error());
@@ -542,7 +569,11 @@ PJ_DEF(pj_status_t) pj_sock_setsockopt( pj_sock_t sock,
 					int optlen)
 {
     PJ_CHECK_STACK();
+#if !defined(PJ_SYMBIAN) && PJ_SYMBIAN == 0
     if (setsockopt(sock, level, optname, (const char*)optval, optlen) != 0)
+#else
+    if (setsockopt(sock, level, optname, (void *)optval, optlen) != 0)
+#endif
 	return PJ_RETURN_OS_ERROR(pj_get_native_netos_error());
     else
 	return PJ_SUCCESS;

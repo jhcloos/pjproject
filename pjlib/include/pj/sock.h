@@ -60,8 +60,10 @@ PJ_BEGIN_DECL
  * THE LIBRARY WILL DO TRANSLATION TO THE NATIVE VALUE.
  */
 extern const pj_uint16_t PJ_AF_UNIX;    /**< Unix domain socket.	*/
-#define PJ_AF_LOCAL	 PJ_AF_UNIX;    /**< POSIX name for AF_UNIX	*/
+extern const pj_uint16_t PJ_AF_LOCAL;    /**< Unix domain socket.	*/
+
 extern const pj_uint16_t PJ_AF_INET;    /**< Internet IP protocol.	*/
+
 extern const pj_uint16_t PJ_AF_INET6;   /**< IP version 6.		*/
 extern const pj_uint16_t PJ_AF_PACKET;  /**< Packet family.		*/
 extern const pj_uint16_t PJ_AF_IRDA;    /**< IRDA sockets.		*/

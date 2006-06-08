@@ -27,6 +27,7 @@ export PJLIB_OBJS += $(OS_OBJS) $(M_OBJS) $(CC_OBJS) $(HOST_OBJS) \
 	rbtree.o string.o timer.o \
 	types.o symbols.o
 export PJLIB_CFLAGS += $(_CFLAGS)
+export PJLIB_CXXFLAGS += $(_CXXFLAGS)
 
 ###############################################################################
 # Defines for building test application

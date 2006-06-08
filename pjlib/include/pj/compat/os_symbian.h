@@ -40,6 +40,7 @@
 #define PJ_HAS_STDIO_H		    1
 #define PJ_HAS_STDLIB_H		    1
 #define PJ_HAS_STRING_H		    1
+#define PJ_HAS_NO_SNPRINTF      1
 #define PJ_HAS_SYS_IOCTL_H	    1
 #define PJ_HAS_SYS_SELECT_H	    0
 #define PJ_HAS_SYS_SOCKET_H	    1
@@ -100,8 +101,8 @@
 #define __FD_SETSIZE		    PJ_IOQUEUE_MAX_HANDLES
  */
 
-/*#define NULL			    ((void*)0)
-*/
+#define NULL			    ((void*)0)
+
 /*
  * Override features.
  */
@@ -132,6 +133,9 @@
  * Default: 0 (let OS allocate memory for thread's stack).
  */
 #define PJ_THREAD_ALLOCATE_STACK    	0
+
+/* Missing socklen_t */
+typedef unsigned int socklen_t;
 
 #endif	/* __PJ_COMPAT_OS_SYMBIAN_H__ */
 

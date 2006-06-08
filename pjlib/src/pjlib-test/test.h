@@ -1,5 +1,5 @@
 /* $Id$ */
-/* 
+/*
  * Copyright (C)2003-2006 Benny Prijono <benny@prijono.org>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 #ifndef __PJLIB_TEST_H__
 #define __PJLIB_TEST_H__
@@ -41,14 +41,14 @@
 #define INCLUDE_ATOMIC_TEST         GROUP_OS
 #define INCLUDE_MUTEX_TEST	    GROUP_OS
 #define INCLUDE_SLEEP_TEST          GROUP_OS
-#define INCLUDE_THREAD_TEST         GROUP_OS 
+#define INCLUDE_THREAD_TEST         GROUP_OS
 #define INCLUDE_SOCK_TEST	    GROUP_NETWORK
 #define INCLUDE_SOCK_PERF_TEST      GROUP_NETWORK
 #define INCLUDE_SELECT_TEST	    GROUP_NETWORK
 #define INCLUDE_UDP_IOQUEUE_TEST    GROUP_NETWORK
 #define INCLUDE_TCP_IOQUEUE_TEST    GROUP_NETWORK
 #define INCLUDE_IOQUEUE_PERF_TEST   GROUP_NETWORK
-#define INCLUDE_IOQUEUE_UNREG_TEST  1	// GROUP_NETWORK
+#define INCLUDE_IOQUEUE_UNREG_TEST  0	// GROUP_NETWORK
 #define INCLUDE_FILE_TEST           GROUP_FILE
 
 #define INCLUDE_ECHO_SERVER         0

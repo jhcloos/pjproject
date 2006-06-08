@@ -31,6 +31,8 @@
 #  include <pj/compat/cc_msvc.h>
 #elif defined(__GNUC__)
 #  include <pj/compat/cc_gcc.h>
+#elif defined(__CW32__)
+#  include <pj/compat/cc_mwcc.h>
 #else
 #  error "Unknown compiler."
 #endif
