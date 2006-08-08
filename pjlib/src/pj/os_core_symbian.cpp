@@ -17,6 +17,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 
+#include <e32std.h>
+
 #include <pj/os.h>
 #include <pj/assert.h>
 #include <pj/pool.h>
@@ -35,6 +37,15 @@
 #include <errno.h>	    // errno
 
 
+struct pj_thread_t
+{
+    char	obj_name[PJ_MAX_OBJ_NAME];
+    RThread    thread;
+    pj_thread_proc *proc;
+    void	   *arg;
+	
+};
+
 /*
     TODO: implement these stub methods!
 */
@@ -47,6 +58,76 @@ PJ_DEF(pj_status_t) pj_init(void)
 {
 
   return PJ_SUCCESS;
+}
+
+/*
+ * thread_main()
+ *
+ * This is the main entry for all threads.
+ */
+TInt *thread_main(TAny *param)
+{
+    pj_thread_t *rec = (pj_thread_t *) param;
+    TInt *result;
+    /* pj_status_t rc; */
+
+    PJ_LOG(6,(rec->obj_name, "Thread started"));
+
+    /* Call user's entry! */
+    result = (TInt*)(long)(*rec->proc)(rec->arg);
+
+    /* Done. */
+    PJ_LOG(6,(rec->obj_name, "Thread quitting"));
+
+    return result;
+}
+
+/*
+ * pj_thread_create(...)
+ */
+PJ_DEF(pj_status_t) pj_thread_create( pj_pool_t *pool, 
+				      const char *thread_name,
+				      pj_thread_proc *proc, 
+				      void *arg,
+				      pj_size_t stack_size, 
+				      unsigned flags,
+				      pj_thread_t **ptr_thread)
+{
+    pj_thread_t *rec;
+    int rc;
+
+
+    PJ_ASSERT_RETURN(pool && proc && ptr_thread, PJ_EINVAL);
+
+    /* Create thread record and assign name for the thread */
+    rec = (struct pj_thread_t*) pj_pool_zalloc(pool, sizeof(pj_thread_t));
+    PJ_ASSERT_RETURN(rec, PJ_ENOMEM);
+    
+    /* Set name. */
+    if (!thread_name) 
+	thread_name = "thr%p";
+    
+    if (strchr(thread_name, '%')) {
+	pj_ansi_snprintf(rec->obj_name, PJ_MAX_OBJ_NAME, thread_name, rec);
+    } else {
+	strncpy(rec->obj_name, thread_name, PJ_MAX_OBJ_NAME);
+	rec->obj_name[PJ_MAX_OBJ_NAME-1] = '\0';
+    }
+
+
+    /* Create the thread. */
+    rec->proc = proc;
+    rec->arg = arg;
+    _LIT( KThreadName, "A name");
+    rc = rec->thread.Create(KThreadName, thread_main, 4096, KMinHeapSize, 256*16, rec->arg, EOwnerProcess);
+    if (rc != 0) {
+	return PJ_RETURN_OS_ERROR(rc);
+    }
+
+    *ptr_thread = rec;
+
+    PJ_LOG(6, (rec->obj_name, "Thread created"));
+    return PJ_SUCCESS;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -65,6 +146,10 @@ PJ_DEF(void) pj_thread_local_free(long index)
 {
 }
 
+class foodata
+{
+};
+
 /*
  * pj_thread_local_set()
  */
@@ -78,7 +163,7 @@ PJ_DEF(pj_status_t) pj_thread_local_set(long index, void *value)
  */
 PJ_DEF(void*) pj_thread_local_get(long index)
 {
-    return NULL;
+    return NULL; //Dll::Tls();
 }
 
 
