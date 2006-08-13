@@ -379,7 +379,7 @@ PJ_INLINE(pj_in_addr) pj_sockaddr_in_get_addr(const pj_sockaddr_in *addr)
     pj_in_addr in_addr;
     in_addr.s_addr = pj_ntohl(addr->sin_addr.s_addr);
     return in_addr;
-};
+}
 
 /**
  * Set the IP address of an Internet socket address.
