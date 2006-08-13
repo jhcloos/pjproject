@@ -2,7 +2,7 @@ export OS_CFLAGS   := $(CC_DEF)PJ_SYMBIAN=1 -include "$(SYMBIAN_SDK_PATH)/includ
 
 export OS_CXXFLAGS :=
 
-export OS_LDFLAGS  :=
+export OS_LDFLAGS  := 
 
 export OS_SOURCES  :=
 

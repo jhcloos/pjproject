@@ -70,9 +70,13 @@ print_lib: print_common
 	@echo LIB=$(LIB)
 	@echo LIBDIR=$(LIBDIR)
 
+#$(LIB): $(LIBDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
+#	$(AR)$(LIB) $(OBJS)
+#	$(RANLIB) $(LIB)
+	
 $(LIB): $(LIBDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
-	$(AR)$(LIB) $(OBJS)
-	$(RANLIB) $(LIB)
+	$(LD) $(LDOUT)$(subst /,$(HOST_PSEP),$(LIB)) -search \
+	    $(subst /,$(HOST_PSEP),$(OBJS)) $($(APP)_LDFLAGS)
 
 $(EXE): $(BINDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
 	$(LD) $(LDOUT)$(subst /,$(HOST_PSEP),$(EXE)) \
