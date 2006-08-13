@@ -101,6 +101,7 @@
 #define __FD_SETSIZE		    PJ_IOQUEUE_MAX_HANDLES
  */
 
+#define NULL 0
 
 /*
  * Override features.
