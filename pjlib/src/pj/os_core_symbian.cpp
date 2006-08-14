@@ -65,16 +65,16 @@ PJ_DEF(pj_status_t) pj_init(void)
  *
  * This is the main entry for all threads.
  */
-TInt *thread_main(TAny *param)
+TInt thread_main(TAny *param)
 {
     pj_thread_t *rec = (pj_thread_t *) param;
-    TInt *result;
+    TInt result;
     /* pj_status_t rc; */
 
     PJ_LOG(6,(rec->obj_name, "Thread started"));
 
     /* Call user's entry! */
-    result = (TInt*)(long)(*rec->proc)(rec->arg);
+    result = (TInt)(*rec->proc)(rec->arg);
 
     /* Done. */
     PJ_LOG(6,(rec->obj_name, "Thread quitting"));
@@ -118,8 +118,8 @@ PJ_DEF(pj_status_t) pj_thread_create( pj_pool_t *pool,
     /* Create the thread. */
     rec->proc = proc;
     rec->arg = arg;
-    _LIT( KThreadName, "A name");
-    rc = rec->thread.Create(KThreadName, thread_main, 4096, KMinHeapSize, 256*16, rec->arg, EOwnerProcess);
+    _LIT( KThreadName, "Athread");
+    rc = rec->thread.Create(KThreadName, thread_main, 4096, KMinHeapSize, 256*16, rec->arg, EOwnerThread);
     if (rc != 0) {
 	return PJ_RETURN_OS_ERROR(rc);
     }
@@ -130,10 +130,83 @@ PJ_DEF(pj_status_t) pj_thread_create( pj_pool_t *pool,
     return PJ_SUCCESS;
 }
 
+/*
+ * pj_thread-get_name()
+ */
+PJ_DEF(const char*) pj_thread_get_name(pj_thread_t *p)
+{
+    pj_thread_t *rec = (pj_thread_t*)p;
+
+    return rec->obj_name;
+}
+
+/*
+ * pj_thread_resume()
+ */
+PJ_DEF(pj_status_t) pj_thread_resume(pj_thread_t *p)
+{
+    pj_status_t rc;
+
+    pj_thread_t *rec = (pj_thread_t*)p;
+
+    rec->thread.Resume();
+
+    rc = PJ_SUCCESS;
+
+    return rc;
+}
+
+/*
+ * pj_thread_this()
+ */
+PJ_DEF(pj_thread_t*) pj_thread_this(void)
+{
+    // TODO
+    return NULL;
+}
+
+/*
+ * pj_thread_join()
+ */
+PJ_DEF(pj_status_t) pj_thread_join(pj_thread_t *p)
+{
+    pj_thread_t *rec = (pj_thread_t *)p;
+    TRequestStatus result;
+
+    //PJ_LOG(6, (pj_thread_this()->obj_name, "Joining thread %s", p->obj_name));
+
+    rec->thread.Rendezvous(result);
+
+    return PJ_SUCCESS;
+}
+
+/*
+ * pj_thread_destroy()
+ */
+PJ_DEF(pj_status_t) pj_thread_destroy(pj_thread_t *p)
+{
+    pj_thread_t *rec = (pj_thread_t *)p;
+    rec->thread.Kill(1);
+	
+
+    return PJ_SUCCESS;
+}
+
+/*
+ * pj_thread_sleep()
+ */
+PJ_DEF(pj_status_t) pj_thread_sleep(unsigned msec)
+{
+    if (sleep(msec * 1000) == 0)
+	return PJ_SUCCESS;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 /*
  * pj_thread_local_alloc()
  */
+
 PJ_DEF(pj_status_t) pj_thread_local_alloc(long *index)
 {
     return PJ_SUCCESS;
@@ -174,6 +247,7 @@ PJ_DEF(pj_status_t) pj_mutex_create_simple( pj_pool_t *pool,
                                             const char *name,
 					    pj_mutex_t **mutex )
 {
+    (*mutex) = (pj_mutex_t *)1;
     return PJ_SUCCESS;
 }
 
@@ -181,6 +255,14 @@ PJ_DEF(pj_status_t) pj_mutex_create_simple( pj_pool_t *pool,
  * pj_mutex_lock()
  */
 PJ_DEF(pj_status_t) pj_mutex_lock(pj_mutex_t *mutex)
+{
+    return PJ_SUCCESS;
+}
+
+/*
+ * pj_mutex_trylock()
+ */
+PJ_DEF(pj_status_t) pj_mutex_trylock(pj_mutex_t *mutex)
 {
     return PJ_SUCCESS;
 }

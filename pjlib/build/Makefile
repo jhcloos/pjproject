@@ -42,6 +42,7 @@ export TEST_OBJS += atomic.o echo_clt.o errno.o exception.o \
 		    udp_echo_srv_sync.o udp_echo_srv_ioqueue.o \
 		    util.o
 export TEST_CFLAGS += $(_CFLAGS)
+export TEST_CXXFLAGS += $(_CXXFLAGS)
 export TEST_LDFLAGS += $(_LDFLAGS)
 export TEST_EXE := ../bin/pjlib-test-$(TARGET_NAME)$(HOST_EXE)
 

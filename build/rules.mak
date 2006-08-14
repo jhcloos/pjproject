@@ -79,7 +79,7 @@ $(LIB): $(LIBDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
 	    $(subst /,$(HOST_PSEP),$(OBJS)) $($(APP)_LDFLAGS)
 
 $(EXE): $(BINDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
-	$(LD) $(LDOUT)$(subst /,$(HOST_PSEP),$(EXE)) \
+	$(LDEXE) $(LDOUT)$(subst /,$(HOST_PSEP),$(EXE)) \
 	    $(subst /,$(HOST_PSEP),$(OBJS)) $($(APP)_LDFLAGS)
 
 $(OBJDIR)/$(app).o: $(OBJDIRS) $(OBJS)
