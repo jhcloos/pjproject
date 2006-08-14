@@ -5,6 +5,7 @@ BINDIR = ../bin
 # The full path of output lib file (e.g. ../lib/libapp.a).
 #
 LIB = $($(APP)_LIB)
+STATICLIB = $($(APP)_STATICLIB)
 
 #
 # The full path of output executable file (e.g. ../bin/app.exe).
@@ -70,16 +71,16 @@ print_lib: print_common
 	@echo LIB=$(LIB)
 	@echo LIBDIR=$(LIBDIR)
 
-#$(LIB): $(LIBDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
-#	$(AR)$(LIB) $(OBJS)
-#	$(RANLIB) $(LIB)
-	
+#$(STATICLIB): $(LIBDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
+#	$(AR) $(STATICLIB) $(OBJS)
+#	$(RANLIB) $(STATICLIB)
+
 $(LIB): $(LIBDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
 	$(LD) $(LDOUT)$(subst /,$(HOST_PSEP),$(LIB)) -search \
 	    $(subst /,$(HOST_PSEP),$(OBJS)) $($(APP)_LDFLAGS)
 
 $(EXE): $(BINDIR) $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
-	$(LDEXE) $(LDOUT)$(subst /,$(HOST_PSEP),$(EXE)) \
+	$(LDEXE) $(LDOUT)$(subst /,$(HOST_PSEP),$(EXE)) -search \
 	    $(subst /,$(HOST_PSEP),$(OBJS)) $($(APP)_LDFLAGS)
 
 $(OBJDIR)/$(app).o: $(OBJDIRS) $(OBJS)

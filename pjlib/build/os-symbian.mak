@@ -18,7 +18,7 @@ export PJLIB_OBJS += addr_resolv_sock.o file_access_unistd.o \
 # TEST_OBJS are operating system specific object files to be included in
 # the test application.
 #
-export TEST_OBJS += main.o main_symbian.o 
+export TEST_OBJS += main_symbian.o 
 
 #
 # RTEMS_LIBRARY_PATH points to the installed RTEMS libraries for the
@@ -29,7 +29,7 @@ export TEST_OBJS += main.o main_symbian.o
 #
 # Additional LDFLAGS for pjlib-test
 #
-export TEST_LDFLAGS += 
+export TEST_LDFLAGS +=  -leexe.lib -leuser.lib -llibpj-symbian.lib
 
 #
 # TARGETS are make targets in the Makefile, to be executed for this given

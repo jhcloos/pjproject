@@ -17,6 +17,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 
+//Auto-generated file. Please do not modify.
+#include <e32cmn.h>
+#pragma data_seg(".SYMBIAN")
+__EMULATOR_IMAGE_HEADER2 (0x10000079,0x1000008d,0x1000425b,EPriorityForeground,0x00000000u,0x00000000u,0x00000000,0x70000001,0x00000000,0)
+#pragma data_seg()
+
+
 #include <e32std.h>
 
 #include <pj/os.h>
@@ -199,6 +206,8 @@ PJ_DEF(pj_status_t) pj_thread_sleep(unsigned msec)
 {
     if (sleep(msec * 1000) == 0)
 	return PJ_SUCCESS;
+	
+    return PJ_SUCCESS;
 }
 
 

@@ -4,6 +4,7 @@ RULES_MAK := ../../build/rules.mak
 
 
 export PJLIB_LIB := ../lib/libpj-$(TARGET_NAME)$(LIBEXT)
+export PJLIB_STATICLIB := ../lib/libpj-$(TARGET_NAME)$(STATICLIBEXT)
 
 ###############################################################################
 # Gather all flags.
@@ -12,9 +13,11 @@ export _CFLAGS 	:= $(CC_CFLAGS) $(OS_CFLAGS) $(HOST_CFLAGS) $(M_CFLAGS) \
 		   $(CFLAGS) $(CC_INC)../include
 export _CXXFLAGS:= $(_CFLAGS) $(CC_CXXFLAGS) $(OS_CXXFLAGS) $(M_CXXFLAGS) \
 		   $(HOST_CXXFLAGS) $(CXXFLAGS)
-export _LDFLAGS := $(subst /,$(HOST_PSEP),$(PJLIB_LIB)) \
+export _LDFLAGS := $(subst /,$(HOST_PSEP),$(PJLIB_STATICLIB)) \
 		   $(CC_LDFLAGS) $(OS_LDFLAGS) $(M_LDFLAGS) $(HOST_LDFLAGS) \
 		   $(LDFLAGS) 
+
+
 
 ###############################################################################
 # Defines for building PJLIB library
@@ -33,6 +36,7 @@ export PJLIB_CXXFLAGS += $(_CXXFLAGS)
 # Defines for building test application
 #
 export TEST_SRCDIR = ../src/pjlib-test
+export TEST_OBJS += 
 export TEST_OBJS += atomic.o echo_clt.o errno.o exception.o \
 		    fifobuf.o file.o \
 		    ioq_perf.o ioq_udp.o ioq_unreg.o ioq_tcp.o \
