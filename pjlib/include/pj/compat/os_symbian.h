@@ -137,6 +137,8 @@
 /* Missing socklen_t */
 typedef unsigned int socklen_t;
 
+#include <e32def.h>
+
 #endif	/* __PJ_COMPAT_OS_SYMBIAN_H__ */
 
 
