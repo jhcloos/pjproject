@@ -390,7 +390,8 @@ extern int PJ_NO_MEMORY_EXCEPTION;
  *  - callback will raise PJ_NO_MEMORY_EXCEPTION exception.
  *  - access to pool factory is not serialized (i.e. not thread safe).
  */
-extern pj_pool_factory_policy pj_pool_factory_default_policy;
+PJ_DECL(pj_pool_factory_policy*) pj_pool_factory_get_default_policy(void);
+
 
 /**
  * This structure contains the declaration for pool factory interface.

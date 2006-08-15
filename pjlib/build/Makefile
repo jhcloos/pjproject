@@ -29,8 +29,8 @@ export PJLIB_OBJS += $(OS_OBJS) $(M_OBJS) $(CC_OBJS) $(HOST_OBJS) \
 	pool.o pool_caching.o pool_dbg.o rand.o \
 	rbtree.o string.o timer.o \
 	types.o symbols.o
-export PJLIB_CFLAGS += $(_CFLAGS)
-export PJLIB_CXXFLAGS += $(_CXXFLAGS)
+export PJLIB_CFLAGS += $(_CFLAGS) -DPJ_EXPORTING
+export PJLIB_CXXFLAGS += $(_CXXFLAGS) -DPJ_EXPORTING
 
 ###############################################################################
 # Defines for building test application
@@ -45,8 +45,8 @@ export TEST_OBJS += atomic.o echo_clt.o errno.o exception.o \
 		    string.o test.o thread.o timer.o timestamp.o \
 		    udp_echo_srv_sync.o udp_echo_srv_ioqueue.o \
 		    util.o
-export TEST_CFLAGS += $(_CFLAGS)
-export TEST_CXXFLAGS += $(_CXXFLAGS)
+export TEST_CFLAGS += $(_CFLAGS) -DPJ_IMPORTING
+export TEST_CXXFLAGS += $(_CXXFLAGS) -DPJ_IMPORTING
 export TEST_LDFLAGS += $(_LDFLAGS)
 export TEST_EXE := ../bin/pjlib-test-$(TARGET_NAME)$(HOST_EXE)
 

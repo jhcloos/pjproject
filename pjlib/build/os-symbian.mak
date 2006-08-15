@@ -32,7 +32,7 @@ export TEST_OBJS += main_symbian.o
 # Additional LDFLAGS for pjlib-test
 #
 #-L"C:\project\symbian\pjlib\lib" -
-export TEST_LDFLAGS +=  -leexe.lib -leuser.lib -L..\ -lpj-symbian.lib
+export TEST_LDFLAGS +=  -leexe.lib -leuser.lib -lestlib.lib -L..\ -lpj-symbian.lib
 
 #
 # TARGETS are make targets in the Makefile, to be executed for this given

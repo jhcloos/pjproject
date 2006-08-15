@@ -64,7 +64,8 @@ int test_inner(void)
     }
     
     //pj_dump_config();
-    pj_caching_pool_init( &caching_pool, &pj_pool_factory_default_policy, 0 );
+    pj_caching_pool_init( &caching_pool, pj_pool_factory_get_default_policy(),
+			  0 );
 
 #if INCLUDE_ERRNO_TEST
     DO_TEST( errno_test() );

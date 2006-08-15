@@ -478,16 +478,16 @@
  * Mark end of declaration section in a header file.
  */
 #ifdef __cplusplus
-#  define PJ_DECL(type)		    type
-#  define PJ_DECL_NO_RETURN(type)   type PJ_NORETURN
-#  define PJ_IDECL_NO_RETURN(type)  PJ_INLINE(type) PJ_NORETURN
+#  define PJ_DECL(type)		    PJ_EXPORT_IMPORT type
+#  define PJ_DECL_NO_RETURN(type)   PJ_EXPORT_IMPORT type PJ_NORETURN
+#  define PJ_IDECL_NO_RETURN(type)  PJ_EXPORT_IMPORT PJ_INLINE(type) PJ_NORETURN
 #  define PJ_BEGIN_DECL		    extern "C" {
 #  define PJ_END_DECL		    }
 #else
-#  define PJ_DECL(type)		    EXPORT_C extern type
-#  define PJ_DECL_NO_RETURN(type)   EXPORT_C PJ_NORETURN type
-#  define PJ_IDECL_NO_RETURN(type)  EXPORT_C PJ_NORETURN PJ_INLINE(type)
-#  define PJ_BEGIN_DECL
+#  define PJ_DECL(type)		    PJ_EXPORT_IMPORT type
+#  define PJ_DECL_NO_RETURN(type)   PJ_EXPORT_IMPORT PJ_NORETURN type
+#  define PJ_IDECL_NO_RETURN(type)  PJ_EXPORT_IMPORT PJ_NORETURN PJ_INLINE(type)
+#  define PJ_BEGIN_DECL		    
 #  define PJ_END_DECL
 #endif
 
