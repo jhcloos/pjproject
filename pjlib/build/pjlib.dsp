@@ -120,6 +120,11 @@ SOURCE=..\src\pj\os_core_linux_kernel.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\pj\os_core_symbian.cpp
+# PROP Exclude_From_Build 1
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\pj\os_core_unix.c
 # PROP Exclude_From_Build 1
 # End Source File
@@ -233,13 +238,6 @@ SOURCE=..\src\pj\ioqueue_common_abs.h
 # Begin Source File
 
 SOURCE=..\src\pj\ioqueue_select.c
-
-!IF  "$(CFG)" == "pjlib - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "pjlib - Win32 Debug"
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
@@ -396,6 +394,10 @@ SOURCE=..\include\pj\compat\os_palmos.h
 # Begin Source File
 
 SOURCE=..\include\pj\compat\os_sunos.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\include\pj\compat\os_symbian.h
 # End Source File
 # Begin Source File
 

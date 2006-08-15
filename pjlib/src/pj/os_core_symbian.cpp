@@ -1,4 +1,4 @@
-/* $Id: os_core_unix.c 433 2006-05-10 19:24:40Z bennylp $ */
+/* $Id$ */
 /* 
  * Copyright (C)2003-2006 Benny Prijono <benny@prijono.org>
  *
@@ -17,7 +17,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 
-//Auto-generated file. Please do not modify.
 #include <e32cmn.h>
 #pragma data_seg(".SYMBIAN")
 __EMULATOR_IMAGE_HEADER2 (0x10000079,0x1000008d,0x1000425b,EPriorityForeground,0x00000000u,0x00000000u,0x00000000,0x70000001,0x00000000,0)
@@ -44,18 +43,30 @@ __EMULATOR_IMAGE_HEADER2 (0x10000079,0x1000008d,0x1000425b,EPriorityForeground,0
 #include <errno.h>	    // errno
 
 
+#define PJ_MAX_TLS  32
+
+
 struct pj_thread_t
 {
-    char	obj_name[PJ_MAX_OBJ_NAME];
-    RThread    thread;
+    char	    obj_name[PJ_MAX_OBJ_NAME];
+    RThread	   *thread;
     pj_thread_proc *proc;
     void	   *arg;
-	
+    unsigned	    flags;
+    void	   *tls_values[PJ_MAX_TLS];
 };
 
-/*
-    TODO: implement these stub methods!
-*/
+
+/* Flags to indicate which TLS variables have been used */
+static int tls_vars[PJ_MAX_TLS];
+
+
+
+PJ_DEF(pj_uint32_t) pj_getpid(void)
+{
+    return 0;
+}
+
 
 /*
  * pj_init(void).
@@ -67,16 +78,23 @@ PJ_DEF(pj_status_t) pj_init(void)
   return PJ_SUCCESS;
 }
 
+
 /*
  * thread_main()
  *
  * This is the main entry for all threads.
  */
-TInt thread_main(TAny *param)
+static TInt thread_main(TAny *param)
 {
     pj_thread_t *rec = (pj_thread_t *) param;
     TInt result;
-    /* pj_status_t rc; */
+
+    /* Save thread record to Symbian TLS */
+    Dll::SetTls(rec);
+
+    /* Suspend thread if PJ_THREAD_SUSPENDED is specified */
+    if (rec->flags & PJ_THREAD_SUSPENDED)
+	rec->thread->Suspend();
 
     PJ_LOG(6,(rec->obj_name, "Thread started"));
 
@@ -101,6 +119,7 @@ PJ_DEF(pj_status_t) pj_thread_create( pj_pool_t *pool,
 				      pj_thread_t **ptr_thread)
 {
     pj_thread_t *rec;
+    void *p;
     int rc;
 
 
@@ -121,12 +140,17 @@ PJ_DEF(pj_status_t) pj_thread_create( pj_pool_t *pool,
 	rec->obj_name[PJ_MAX_OBJ_NAME-1] = '\0';
     }
 
+    /* Create Symbian RThread object */
+    p = pj_pool_alloc(pool, sizeof(RThread));
+    rec->thread = new (p) RThread;
 
     /* Create the thread. */
     rec->proc = proc;
     rec->arg = arg;
+    rec->flags = flags;
     _LIT( KThreadName, "Athread");
-    rc = rec->thread.Create(KThreadName, thread_main, 4096, KMinHeapSize, 256*16, rec->arg, EOwnerThread);
+    rc = rec->thread->Create(KThreadName, &thread_main, stack_size, 
+			     KMinHeapSize, KMinHeapSize, rec);
     if (rc != 0) {
 	return PJ_RETURN_OS_ERROR(rc);
     }
@@ -142,9 +166,7 @@ PJ_DEF(pj_status_t) pj_thread_create( pj_pool_t *pool,
  */
 PJ_DEF(const char*) pj_thread_get_name(pj_thread_t *p)
 {
-    pj_thread_t *rec = (pj_thread_t*)p;
-
-    return rec->obj_name;
+    return p->obj_name;
 }
 
 /*
@@ -152,15 +174,8 @@ PJ_DEF(const char*) pj_thread_get_name(pj_thread_t *p)
  */
 PJ_DEF(pj_status_t) pj_thread_resume(pj_thread_t *p)
 {
-    pj_status_t rc;
-
-    pj_thread_t *rec = (pj_thread_t*)p;
-
-    rec->thread.Resume();
-
-    rc = PJ_SUCCESS;
-
-    return rc;
+    p->thread->Resume();
+    return PJ_SUCCESS;
 }
 
 /*
@@ -168,21 +183,19 @@ PJ_DEF(pj_status_t) pj_thread_resume(pj_thread_t *p)
  */
 PJ_DEF(pj_thread_t*) pj_thread_this(void)
 {
-    // TODO
-    return NULL;
+    return (pj_thread_t*)Dll::Tls();
 }
 
 /*
  * pj_thread_join()
  */
-PJ_DEF(pj_status_t) pj_thread_join(pj_thread_t *p)
+PJ_DEF(pj_status_t) pj_thread_join(pj_thread_t *rec)
 {
-    pj_thread_t *rec = (pj_thread_t *)p;
     TRequestStatus result;
 
-    //PJ_LOG(6, (pj_thread_this()->obj_name, "Joining thread %s", p->obj_name));
+    PJ_LOG(6, (rec->obj_name, "Joining thread %s", rec->obj_name));
 
-    rec->thread.Rendezvous(result);
+    rec->thread->Rendezvous(result);
 
     return PJ_SUCCESS;
 }
@@ -190,12 +203,9 @@ PJ_DEF(pj_status_t) pj_thread_join(pj_thread_t *p)
 /*
  * pj_thread_destroy()
  */
-PJ_DEF(pj_status_t) pj_thread_destroy(pj_thread_t *p)
+PJ_DEF(pj_status_t) pj_thread_destroy(pj_thread_t *rec)
 {
-    pj_thread_t *rec = (pj_thread_t *)p;
-    rec->thread.Kill(1);
-	
-
+    rec->thread->Kill(1);
     return PJ_SUCCESS;
 }
 
@@ -204,6 +214,8 @@ PJ_DEF(pj_status_t) pj_thread_destroy(pj_thread_t *p)
  */
 PJ_DEF(pj_status_t) pj_thread_sleep(unsigned msec)
 {
+    PJ_TODO(MSEC_RESOLUTION_SLEEP);
+
     if (sleep(msec * 1000) == 0)
 	return PJ_SUCCESS;
 	
@@ -218,6 +230,20 @@ PJ_DEF(pj_status_t) pj_thread_sleep(unsigned msec)
 
 PJ_DEF(pj_status_t) pj_thread_local_alloc(long *index)
 {
+    unsigned i;
+
+    /* Find unused TLS variable */
+    for (i=0; i<PJ_ARRAY_SIZE(tls_vars); ++i) {
+	if (tls_vars[i] == 0)
+	    break;
+    }
+
+    if (i == PJ_ARRAY_SIZE(tls_vars))
+	return PJ_ETOOMANY;
+
+    tls_vars[i] = 1;
+    *index = i;
+
     return PJ_SUCCESS;
 }
 
@@ -226,17 +252,24 @@ PJ_DEF(pj_status_t) pj_thread_local_alloc(long *index)
  */
 PJ_DEF(void) pj_thread_local_free(long index)
 {
+    PJ_ASSERT_ON_FAIL(index >= 0 && index < PJ_ARRAY_SIZE(tls_vars) &&
+		     tls_vars[index] != 0, return);
+
+    tls_vars[index] = 0;
 }
 
-class foodata
-{
-};
 
 /*
  * pj_thread_local_set()
  */
 PJ_DEF(pj_status_t) pj_thread_local_set(long index, void *value)
 {
+    pj_thread_t *rec = pj_thread_this();
+
+    PJ_ASSERT_RETURN(index >= 0 && index < PJ_ARRAY_SIZE(tls_vars) &&
+		     tls_vars[index] != 0, PJ_EINVAL);
+
+    rec->tls_values[index] = value;
     return PJ_SUCCESS;
 }
 
@@ -245,9 +278,24 @@ PJ_DEF(pj_status_t) pj_thread_local_set(long index, void *value)
  */
 PJ_DEF(void*) pj_thread_local_get(long index)
 {
-    return NULL; //Dll::Tls();
+    pj_thread_t *rec = pj_thread_this();
+
+    PJ_ASSERT_RETURN(index >= 0 && index < PJ_ARRAY_SIZE(tls_vars) &&
+		     tls_vars[index] != 0, NULL);
+
+    return rec->tls_values[index];
 }
 
+
+PJ_DEF(pj_status_t) pj_mutex_create( pj_pool_t *pool, 
+                                     const char *name,
+				     int type, 
+                                     pj_mutex_t **mutex)
+{
+    PJ_TODO(pj_mutex_create);
+    *mutex = (pj_mutex_t*)1;
+    return PJ_SUCCESS;
+}
 
 /*
  * pj_mutex_create_simple()
@@ -256,15 +304,24 @@ PJ_DEF(pj_status_t) pj_mutex_create_simple( pj_pool_t *pool,
                                             const char *name,
 					    pj_mutex_t **mutex )
 {
-    (*mutex) = (pj_mutex_t *)1;
-    return PJ_SUCCESS;
+    return pj_mutex_create(pool, name, PJ_MUTEX_SIMPLE, mutex);
 }
+
+
+PJ_DEF(pj_status_t) pj_mutex_create_recursive( pj_pool_t *pool,
+					       const char *name,
+					       pj_mutex_t **mutex )
+{
+    return pj_mutex_create(pool, name, PJ_MUTEX_RECURSE, mutex);
+}
+
 
 /*
  * pj_mutex_lock()
  */
 PJ_DEF(pj_status_t) pj_mutex_lock(pj_mutex_t *mutex)
 {
+    PJ_TODO(pj_mutex_lock);
     return PJ_SUCCESS;
 }
 
@@ -273,6 +330,7 @@ PJ_DEF(pj_status_t) pj_mutex_lock(pj_mutex_t *mutex)
  */
 PJ_DEF(pj_status_t) pj_mutex_trylock(pj_mutex_t *mutex)
 {
+    PJ_TODO(pj_mutex_trylock);
     return PJ_SUCCESS;
 }
 
@@ -281,6 +339,7 @@ PJ_DEF(pj_status_t) pj_mutex_trylock(pj_mutex_t *mutex)
  */
 PJ_DEF(pj_status_t) pj_mutex_unlock(pj_mutex_t *mutex)
 {
+    PJ_TODO(pj_mutex_unlock);
     return PJ_SUCCESS;
 }
 
@@ -289,5 +348,29 @@ PJ_DEF(pj_status_t) pj_mutex_unlock(pj_mutex_t *mutex)
  */
 PJ_DEF(pj_status_t) pj_mutex_destroy(pj_mutex_t *mutex)
 {
+    PJ_TODO(pj_mutex_destroy);
     return PJ_SUCCESS;
 }
+
+/////////////////////////////////////////////////////////////////////////////
+
+/*
+ * Enter critical section.
+ */
+PJ_DEF(void) pj_enter_critical_section(void)
+{
+    PJ_TODO(pj_enter_critical_section);
+}
+
+
+/*
+ * Leave critical section.
+ */
+PJ_DEF(void) pj_leave_critical_section(void)
+{
+    PJ_TODO(pj_leave_critical_section);
+}
+
+
+
+
