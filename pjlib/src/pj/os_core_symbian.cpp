@@ -18,11 +18,6 @@
  */
 
 #include <e32cmn.h>
-#pragma data_seg(".SYMBIAN")
-__EMULATOR_IMAGE_HEADER2 (0x10000079,0x1000008d,0x1000425b,EPriorityForeground,0x00000000u,0x00000000u,0x00000000,0x70000001,0x00000000,0)
-#pragma data_seg()
-
-
 #include <e32std.h>
 
 #include <pj/os.h>
@@ -35,25 +30,28 @@ __EMULATOR_IMAGE_HEADER2 (0x10000079,0x1000008d,0x1000425b,EPriorityForeground,0
 #include <pj/except.h>
 #include <pj/errno.h>
 
-#if defined(PJ_HAS_SEMAPHORE) && PJ_HAS_SEMAPHORE != 0
-#  include <semaphore.h>
-#endif
 
-#include <unistd.h>	    // getpid()
-#include <errno.h>	    // errno
+#define PJ_MAX_TLS	    32
+#define DUMMY_MUTEX	    ((pj_mutex_t*)101)
+#define DUMMY_SEMAPHORE	    ((pj_sem_t*)102)
 
 
-#define PJ_MAX_TLS  32
-
+/*
+ * Note:
+ *
+ * The Symbian implementation does not support threading!
+ */ 
 
 struct pj_thread_t
 {
     char	    obj_name[PJ_MAX_OBJ_NAME];
-    RThread	   *thread;
-    pj_thread_proc *proc;
-    void	   *arg;
-    unsigned	    flags;
     void	   *tls_values[PJ_MAX_TLS];
+
+} main_thread;
+
+struct pj_atomic_t
+{
+    pj_atomic_value_t	value;
 };
 
 
@@ -74,38 +72,10 @@ PJ_DEF(pj_uint32_t) pj_getpid(void)
  */
 PJ_DEF(pj_status_t) pj_init(void)
 {
-
-  return PJ_SUCCESS;
+    pj_ansi_strcpy(main_thread.obj_name, "pjthread");
+    return PJ_SUCCESS;
 }
 
-
-/*
- * thread_main()
- *
- * This is the main entry for all threads.
- */
-static TInt thread_main(TAny *param)
-{
-    pj_thread_t *rec = (pj_thread_t *) param;
-    TInt result;
-
-    /* Save thread record to Symbian TLS */
-    Dll::SetTls(rec);
-
-    /* Suspend thread if PJ_THREAD_SUSPENDED is specified */
-    if (rec->flags & PJ_THREAD_SUSPENDED)
-	rec->thread->Suspend();
-
-    PJ_LOG(6,(rec->obj_name, "Thread started"));
-
-    /* Call user's entry! */
-    result = (TInt)(*rec->proc)(rec->arg);
-
-    /* Done. */
-    PJ_LOG(6,(rec->obj_name, "Thread quitting"));
-
-    return result;
-}
 
 /*
  * pj_thread_create(...)
@@ -118,47 +88,16 @@ PJ_DEF(pj_status_t) pj_thread_create( pj_pool_t *pool,
 				      unsigned flags,
 				      pj_thread_t **ptr_thread)
 {
-    pj_thread_t *rec;
-    void *p;
-    int rc;
+    PJ_UNUSED_ARG(pool);
+    PJ_UNUSED_ARG(thread_name);
+    PJ_UNUSED_ARG(proc);
+    PJ_UNUSED_ARG(arg);
+    PJ_UNUSED_ARG(stack_size);
+    PJ_UNUSED_ARG(flags);
+    PJ_UNUSED_ARG(ptr_thread);
 
-
-    PJ_ASSERT_RETURN(pool && proc && ptr_thread, PJ_EINVAL);
-
-    /* Create thread record and assign name for the thread */
-    rec = (struct pj_thread_t*) pj_pool_zalloc(pool, sizeof(pj_thread_t));
-    PJ_ASSERT_RETURN(rec, PJ_ENOMEM);
-    
-    /* Set name. */
-    if (!thread_name) 
-	thread_name = "thr%p";
-    
-    if (strchr(thread_name, '%')) {
-	pj_ansi_snprintf(rec->obj_name, PJ_MAX_OBJ_NAME, thread_name, rec);
-    } else {
-	strncpy(rec->obj_name, thread_name, PJ_MAX_OBJ_NAME);
-	rec->obj_name[PJ_MAX_OBJ_NAME-1] = '\0';
-    }
-
-    /* Create Symbian RThread object */
-    p = pj_pool_alloc(pool, sizeof(RThread));
-    rec->thread = new (p) RThread;
-
-    /* Create the thread. */
-    rec->proc = proc;
-    rec->arg = arg;
-    rec->flags = flags;
-    _LIT( KThreadName, "Athread");
-    rc = rec->thread->Create(KThreadName, &thread_main, stack_size, 
-			     KMinHeapSize, KMinHeapSize, rec);
-    if (rc != 0) {
-	return PJ_RETURN_OS_ERROR(rc);
-    }
-
-    *ptr_thread = rec;
-
-    PJ_LOG(6, (rec->obj_name, "Thread created"));
-    return PJ_SUCCESS;
+    /* Sorry mate, we don't support threading */
+    return PJ_ENOTSUP;
 }
 
 /*
@@ -166,6 +105,7 @@ PJ_DEF(pj_status_t) pj_thread_create( pj_pool_t *pool,
  */
 PJ_DEF(const char*) pj_thread_get_name(pj_thread_t *p)
 {
+    pj_assert(p == &main_thread);
     return p->obj_name;
 }
 
@@ -174,8 +114,8 @@ PJ_DEF(const char*) pj_thread_get_name(pj_thread_t *p)
  */
 PJ_DEF(pj_status_t) pj_thread_resume(pj_thread_t *p)
 {
-    p->thread->Resume();
-    return PJ_SUCCESS;
+    PJ_UNUSED_ARG(p);
+    return PJ_EINVALIDOP;
 }
 
 /*
@@ -183,7 +123,7 @@ PJ_DEF(pj_status_t) pj_thread_resume(pj_thread_t *p)
  */
 PJ_DEF(pj_thread_t*) pj_thread_this(void)
 {
-    return (pj_thread_t*)Dll::Tls();
+    return &main_thread;
 }
 
 /*
@@ -191,13 +131,8 @@ PJ_DEF(pj_thread_t*) pj_thread_this(void)
  */
 PJ_DEF(pj_status_t) pj_thread_join(pj_thread_t *rec)
 {
-    TRequestStatus result;
-
-    PJ_LOG(6, (rec->obj_name, "Joining thread %s", rec->obj_name));
-
-    rec->thread->Rendezvous(result);
-
-    return PJ_SUCCESS;
+    PJ_UNUSED_ARG(rec);
+    return PJ_EINVALIDOP;
 }
 
 /*
@@ -205,8 +140,8 @@ PJ_DEF(pj_status_t) pj_thread_join(pj_thread_t *rec)
  */
 PJ_DEF(pj_status_t) pj_thread_destroy(pj_thread_t *rec)
 {
-    rec->thread->Kill(1);
-    return PJ_SUCCESS;
+    PJ_UNUSED_ARG(rec);
+    return PJ_EINVALIDOP;
 }
 
 /*
@@ -214,12 +149,10 @@ PJ_DEF(pj_status_t) pj_thread_destroy(pj_thread_t *rec)
  */
 PJ_DEF(pj_status_t) pj_thread_sleep(unsigned msec)
 {
-    PJ_TODO(MSEC_RESOLUTION_SLEEP);
+    PJ_UNUSED_ARG(msec);
 
-    if (sleep(msec * 1000) == 0)
-	return PJ_SUCCESS;
-	
-    return PJ_SUCCESS;
+    /* Not supported either */
+    return PJ_EINVALIDOP;
 }
 
 
@@ -287,13 +220,119 @@ PJ_DEF(void*) pj_thread_local_get(long index)
 }
 
 
+///////////////////////////////////////////////////////////////////////////////
+/*
+ * Create atomic variable.
+ */
+PJ_DEF(pj_status_t) pj_atomic_create( pj_pool_t *pool, 
+				      pj_atomic_value_t initial,
+				      pj_atomic_t **atomic )
+{
+    *atomic = (pj_atomic_t*)pj_pool_alloc(pool, sizeof(struct pj_atomic_t));
+    (*atomic)->value = initial;
+    return PJ_SUCCESS;
+}
+
+
+/*
+ * Destroy atomic variable.
+ */
+PJ_DEF(pj_status_t) pj_atomic_destroy( pj_atomic_t *atomic_var )
+{
+    PJ_UNUSED_ARG(atomic_var);
+    return PJ_SUCCESS;
+}
+
+
+/*
+ * Set the value of an atomic type, and return the previous value.
+ */
+PJ_DEF(void) pj_atomic_set( pj_atomic_t *atomic_var, 
+			    pj_atomic_value_t value)
+{
+    atomic_var->value = value;
+}
+
+
+/*
+ * Get the value of an atomic type.
+ */
+PJ_DEF(pj_atomic_value_t) pj_atomic_get(pj_atomic_t *atomic_var)
+{
+    return atomic_var->value;
+}
+
+
+/*
+ * Increment the value of an atomic type.
+ */
+PJ_DEF(void) pj_atomic_inc(pj_atomic_t *atomic_var)
+{
+    ++atomic_var->value;
+}
+
+
+/*
+ * Increment the value of an atomic type and get the result.
+ */
+PJ_DEF(pj_atomic_value_t) pj_atomic_inc_and_get(pj_atomic_t *atomic_var)
+{
+    return ++atomic_var->value;
+}
+
+
+/*
+ * Decrement the value of an atomic type.
+ */
+PJ_DEF(void) pj_atomic_dec(pj_atomic_t *atomic_var)
+{
+    --atomic_var->value;
+}	
+
+
+/*
+ * Decrement the value of an atomic type and get the result.
+ */
+PJ_DEF(pj_atomic_value_t) pj_atomic_dec_and_get(pj_atomic_t *atomic_var)
+{
+    return --atomic_var->value;
+}
+
+
+/*
+ * Add a value to an atomic type.
+ */
+PJ_DEF(void) pj_atomic_add( pj_atomic_t *atomic_var,
+			    pj_atomic_value_t value)
+{
+    atomic_var->value += value;
+}
+
+
+/*
+ * Add a value to an atomic type and get the result.
+ */
+PJ_DEF(pj_atomic_value_t) pj_atomic_add_and_get( pj_atomic_t *atomic_var,
+			                         pj_atomic_value_t value)
+{
+    atomic_var->value += value;
+    return atomic_var->value;
+}
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+
 PJ_DEF(pj_status_t) pj_mutex_create( pj_pool_t *pool, 
                                      const char *name,
 				     int type, 
                                      pj_mutex_t **mutex)
 {
-    PJ_TODO(pj_mutex_create);
-    *mutex = (pj_mutex_t*)1;
+    PJ_UNUSED_ARG(pool);
+    PJ_UNUSED_ARG(name);
+    PJ_UNUSED_ARG(type);
+
+    *mutex = DUMMY_MUTEX;
     return PJ_SUCCESS;
 }
 
@@ -321,7 +360,7 @@ PJ_DEF(pj_status_t) pj_mutex_create_recursive( pj_pool_t *pool,
  */
 PJ_DEF(pj_status_t) pj_mutex_lock(pj_mutex_t *mutex)
 {
-    PJ_TODO(pj_mutex_lock);
+    pj_assert(mutex == DUMMY_MUTEX);
     return PJ_SUCCESS;
 }
 
@@ -330,7 +369,7 @@ PJ_DEF(pj_status_t) pj_mutex_lock(pj_mutex_t *mutex)
  */
 PJ_DEF(pj_status_t) pj_mutex_trylock(pj_mutex_t *mutex)
 {
-    PJ_TODO(pj_mutex_trylock);
+    pj_assert(mutex == DUMMY_MUTEX);
     return PJ_SUCCESS;
 }
 
@@ -339,7 +378,7 @@ PJ_DEF(pj_status_t) pj_mutex_trylock(pj_mutex_t *mutex)
  */
 PJ_DEF(pj_status_t) pj_mutex_unlock(pj_mutex_t *mutex)
 {
-    PJ_TODO(pj_mutex_unlock);
+    pj_assert(mutex == DUMMY_MUTEX);
     return PJ_SUCCESS;
 }
 
@@ -348,9 +387,17 @@ PJ_DEF(pj_status_t) pj_mutex_unlock(pj_mutex_t *mutex)
  */
 PJ_DEF(pj_status_t) pj_mutex_destroy(pj_mutex_t *mutex)
 {
-    PJ_TODO(pj_mutex_destroy);
+    pj_assert(mutex == DUMMY_MUTEX);
     return PJ_SUCCESS;
 }
+
+
+/////////////////////////////////////////////////////////////////////////////
+/*
+ * RW Mutex
+ */
+#include "os_rwmutex.c"
+
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -359,7 +406,7 @@ PJ_DEF(pj_status_t) pj_mutex_destroy(pj_mutex_t *mutex)
  */
 PJ_DEF(void) pj_enter_critical_section(void)
 {
-    PJ_TODO(pj_enter_critical_section);
+    /* Nothing to do */
 }
 
 
@@ -368,9 +415,69 @@ PJ_DEF(void) pj_enter_critical_section(void)
  */
 PJ_DEF(void) pj_leave_critical_section(void)
 {
-    PJ_TODO(pj_leave_critical_section);
+    /* Nothing to do */
 }
 
 
+/////////////////////////////////////////////////////////////////////////////
+
+/*
+ * Create semaphore.
+ */
+PJ_DEF(pj_status_t) pj_sem_create( pj_pool_t *pool, 
+                                   const char *name,
+				   unsigned initial, 
+                                   unsigned max,
+				   pj_sem_t **sem)
+{
+    PJ_UNUSED_ARG(pool);
+    PJ_UNUSED_ARG(name);
+    PJ_UNUSED_ARG(initial);
+    PJ_UNUSED_ARG(max);
+    PJ_UNUSED_ARG(sem);
+
+    /* Unsupported */
+    return PJ_ENOTSUP;
+}
+
+
+/*
+ * Wait for semaphore.
+ */
+PJ_DEF(pj_status_t) pj_sem_wait(pj_sem_t *sem)
+{
+    PJ_UNUSED_ARG(sem);
+    return PJ_EINVALIDOP;
+}
+
+
+/*
+ * Try wait for semaphore.
+ */
+PJ_DEF(pj_status_t) pj_sem_trywait(pj_sem_t *sem)
+{
+    PJ_UNUSED_ARG(sem);
+    return PJ_EINVALIDOP;
+}
+
+
+/*
+ * Release semaphore.
+ */
+PJ_DEF(pj_status_t) pj_sem_post(pj_sem_t *sem)
+{
+    PJ_UNUSED_ARG(sem);
+    return PJ_EINVALIDOP;
+}
+
+
+/*
+ * Destroy semaphore.
+ */
+PJ_DEF(pj_status_t) pj_sem_destroy(pj_sem_t *sem)
+{
+    PJ_UNUSED_ARG(sem);
+    return PJ_EINVALIDOP;
+}
 
 

@@ -1,0 +1,60 @@
+TARGET 		pjlib-symbian.lib
+TARGETTYPE 	lib
+UID		0x100039CE 0x10004299
+VENDORID	0x70000001
+
+SOURCEPATH	..\pjlib\src\pj
+
+MACRO		PJ_M_I386=1
+MACRO		PJ_SYMBIAN=1
+MACRO		PJ_EXPORTING
+
+//
+// Platform independent source
+//
+SOURCE		array.c
+SOURCE		config.c
+SOURCE		ctype.c
+SOURCE		errno.c
+SOURCE		except.c
+SOURCE		fifobuf.c
+SOURCE		guid.c
+SOURCE		hash.c
+SOURCE		list.c
+SOURCE		lock.c
+SOURCE		string.c
+SOURCE		log.c
+SOURCE		os_time_common.c
+SOURCE		pool.c
+SOURCE		pool_caching.c
+SOURCE		rand.c
+SOURCE		rbtree.c
+SOURCE		timer.c
+SOURCE		types.c
+
+
+//
+// Platform dependent source
+//
+SOURCE		addr_resolv_sock.c
+SOURCE		file_access_unistd.c
+SOURCE		file_io_ansi.c
+SOURCE		guid_simple.c
+SOURCE		log_writer_stdout.c
+SOURCE		os_core_symbian.cpp
+SOURCE		os_error_unix.c
+SOURCE		os_time_unix.c
+SOURCE		os_timestamp_common.c
+SOURCE		os_timestamp_posix.c
+SOURCE		pool_policy_malloc.c
+SOURCE		compat\string_compat.c
+SOURCE		sock_bsd.c
+SOURCE		sock_select_symbian.cpp
+SOURCE		ioqueue_symbian.cpp
+
+
+SYSTEMINCLUDE	..\pjlib\include
+//SYSTEMINCLUDE	\symbian\9.1\S60_3rd_MR\epoc32\include
+//SYSTEMINCLUDE	\symbian\9.1\S60_3rd_MR\epoc32\include\libc
+SYSTEMINCLUDE	\symbian\9.1\S60_3rd\epoc32\include
+SYSTEMINCLUDE	\symbian\9.1\S60_3rd\epoc32\include\libc

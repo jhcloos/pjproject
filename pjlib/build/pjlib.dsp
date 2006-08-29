@@ -110,6 +110,11 @@ SOURCE=..\src\pj\ioqueue_epoll.c
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\pj\ioqueue_symbian.cpp
+# PROP Exclude_From_Build 1
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\pj\log_writer_printk.c
 # PROP Exclude_From_Build 1
 # End Source File
@@ -161,6 +166,11 @@ SOURCE=..\src\pj\pool_policy_kmalloc.c
 # Begin Source File
 
 SOURCE=..\src\pj\sock_linux_kernel.c
+# PROP Exclude_From_Build 1
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\pj\sock_select_symbian.cpp
 # PROP Exclude_From_Build 1
 # End Source File
 # Begin Source File

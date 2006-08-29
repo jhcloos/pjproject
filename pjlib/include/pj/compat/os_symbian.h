@@ -91,9 +91,10 @@
  */
 #define PJ_BLOCKING_CONNECT_ERROR_VAL   EINPROGRESS
 
-#ifndef PJ_HAS_THREADS
-#  define PJ_HAS_THREADS	    (1)
-#endif
+/*
+ * We don't want to use threads in Symbian
+ */
+#define PJ_HAS_THREADS		    0
 
 
 /*
@@ -106,14 +107,12 @@
 /*
  * Override features.
  */
-#define PJ_HAS_FLOATING_POINT	    0
-#define PJ_HAS_MALLOC               0
-#define PJ_HAS_SEMAPHORE	    0
+#define PJ_HAS_FLOATING_POINT	    1
+#define PJ_HAS_MALLOC               1
+#define PJ_HAS_SEMAPHORE	    1
 #define PJ_HAS_EVENT_OBJ	    0
 #define PJ_HAS_HIGH_RES_TIMER	    1
-#ifndef PJ_OS_HAS_CHECK_STACK
-#   define PJ_OS_HAS_CHECK_STACK    0
-#endif
+#define PJ_OS_HAS_CHECK_STACK       0
 #define PJ_TERM_HAS_COLOR	    0
 #define PJ_NATIVE_STRING_IS_UNICODE 0
 
@@ -121,7 +120,7 @@
 #define PJ_THREAD_DESC_SIZE	    128
 
 /* If 1, use Read/Write mutex emulation for platforms that don't support it */
-#define PJ_EMULATE_RWMUTEX	    0
+#define PJ_EMULATE_RWMUTEX	    1
 
 /* If 1, pj_thread_create() should enforce the stack size when creating
  * threads.

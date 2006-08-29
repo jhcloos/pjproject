@@ -1,0 +1,57 @@
+TARGET 		pjlib-test-symbian.exe
+TARGETTYPE 	exe
+UID		0x100039CE 0x10004299
+VENDORID	0x70000001
+
+SOURCEPATH	..\pjlib\src\pjlib-test
+
+MACRO		PJ_M_I386=1
+MACRO		PJ_SYMBIAN=1
+MACRO		PJ_IMPORTING
+
+
+// Test files
+
+SOURCE	atomic.c
+SOURCE	echo_clt.c
+SOURCE	errno.c
+SOURCE	exception.c
+SOURCE	fifobuf.c
+SOURCE	file.c
+SOURCE	ioq_perf.c
+SOURCE	ioq_tcp.c
+SOURCE	ioq_udp.c
+SOURCE	ioq_unreg.c
+SOURCE	list.c
+SOURCE	mutex.c
+SOURCE	os.c
+SOURCE	pool.c
+SOURCE	pool_perf.c
+SOURCE	rand.c
+SOURCE	rbtree.c
+SOURCE	select.c
+SOURCE	sleep.c
+SOURCE	sock.c
+SOURCE	sock_perf.c
+SOURCE	string_test.c
+SOURCE	test.c
+SOURCE	thread.c
+SOURCE	timer.c
+SOURCE	timestamp.c
+SOURCE	udp_echo_srv_ioqueue.c
+SOURCE	udp_echo_srv_sync.c
+SOURCE	util.c
+
+SOURCE	main_symbian.cpp
+
+
+SYSTEMINCLUDE	..\pjlib\include
+SYSTEMINCLUDE	\symbian\9.1\S60_3rd\epoc32\include
+SYSTEMINCLUDE	\symbian\9.1\S60_3rd\epoc32\include\libc
+//SYSTEMINCLUDE	\symbian\9.1\S60_3rd_MR\epoc32\include
+//SYSTEMINCLUDE	\symbian\9.1\S60_3rd_MR\epoc32\include\libc
+
+LIBRARY		pjlib-symbian.lib euser.lib estlib.lib eexe.lib
+		//eexe.lib 
+CAPABILITY	None
+

@@ -33,6 +33,8 @@
 #  include <pj/compat/cc_gcc.h>
 #elif defined(__CW32__)
 #  include <pj/compat/cc_mwcc.h>
+#elif defined(__MWERKS__)
+#  include <pj/compat/cc_codew.h>
 #else
 #  error "Unknown compiler."
 #endif
