@@ -17,7 +17,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 #include "test.h"
-#include <pjlib.h>
+#include <pj/errno.h>
+#include <pj/ioqueue.h>
+#include <pj/log.h>
+#include <pj/os.h>
+#include <pj/pool.h>
+#include <pj/sock.h>
+
 #ifdef _MSC_VER
 #  pragma warning(disable:4127)
 #endif
@@ -194,17 +200,5 @@ on_return:
 
 int test_main(void)
 {
-    PJ_USE_EXCEPTION;
-
-    PJ_TRY {
-        return test_inner();
-    }
-    PJ_CATCH_ANY {
-        int id = PJ_GET_EXCEPTION();
-        PJ_LOG(3,("test", "FATAL: unhandled exception id %d (%s)", 
-                  id, pj_exception_id_name(id)));
-    }
-    PJ_END;
-
-    return -1;
+    return test_inner();
 }

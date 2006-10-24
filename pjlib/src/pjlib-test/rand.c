@@ -22,7 +22,12 @@
 
 #if INCLUDE_RAND_TEST
 
-#define COUNT  1024
+#if defined(PJ_SYMBIAN) && PJ_SYMBIAN!=0
+#   define COUNT    128
+#else
+#   define COUNT  1024
+#endif
+
 static int values[COUNT];
 
 /*

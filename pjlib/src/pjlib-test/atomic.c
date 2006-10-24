@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 #include "test.h"
-#include <pjlib.h>
+#include <pj/os.h>
 
 /**
  * \page page_pjlib_atomic_test Test: Atomic Variable

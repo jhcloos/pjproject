@@ -71,7 +71,7 @@ static int do_select( pj_sock_t sock1, pj_sock_t sock2,
         setcount[i] = 0;
     }
 
-    timeout.sec = 1;
+    timeout.sec = 5;
     timeout.msec = 0;
 
     n = pj_sock_select(FD_SETSIZE, &fds[0], &fds[1], &fds[2],

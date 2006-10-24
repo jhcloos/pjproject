@@ -140,13 +140,13 @@ PJ_DEF(pj_str_t) pj_strerror( pj_status_t statcode,
 
     pj_assert(buf && bufsize);
 
-    if (statcode < PJ_ERRNO_START + PJ_ERRNO_SPACE_SIZE) {
+    if (statcode < PJ_ERRNO_START + PJ_ERRNO_SPACE_SIZE - PJ_ERRNO_SPACE_GAP) {
         len = pj_ansi_snprintf( buf, bufsize, "Unknown error %d", statcode);
 
-    } else if (statcode < PJ_ERRNO_START_STATUS + PJ_ERRNO_SPACE_SIZE) {
+    } else if (statcode < PJ_ERRNO_START_STATUS + PJ_ERRNO_SPACE_SIZE - PJ_ERRNO_SPACE_GAP) {
         len = pjlib_error(statcode, buf, bufsize);
 
-    } else if (statcode < PJ_ERRNO_START_SYS + PJ_ERRNO_SPACE_SIZE) {
+    } else if (statcode < PJ_ERRNO_START_SYS + PJ_ERRNO_SPACE_SIZE - PJ_ERRNO_SPACE_GAP) {
         len = platform_strerror(PJ_STATUS_TO_OS(statcode), buf, bufsize);
 
     } else {

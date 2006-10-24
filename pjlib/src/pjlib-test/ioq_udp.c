@@ -34,7 +34,15 @@
 
 #if INCLUDE_UDP_IOQUEUE_TEST
 
-#include <pjlib.h>
+#include <pj/assert.h>
+#include <pj/errno.h>
+#include <pj/ioqueue.h>
+#include <pj/log.h>
+#include <pj/os.h>
+#include <pj/pool.h>
+#include <pj/sock.h>
+#include <pj/string.h>
+
 
 #include <pj/compat/socket.h>
 
@@ -328,7 +336,7 @@ static void on_read_complete(pj_ioqueue_key_t *key,
                              pj_ioqueue_op_key_t *op_key, 
                              pj_ssize_t bytes_read)
 {
-    unsigned *p_packet_cnt = pj_ioqueue_get_user_data(key);
+    unsigned *p_packet_cnt = (unsigned *)pj_ioqueue_get_user_data(key);
 
     PJ_UNUSED_ARG(op_key);
     PJ_UNUSED_ARG(bytes_read);
@@ -510,8 +518,8 @@ static int many_handles_test(void)
     if (!pool)
 	return PJ_ENOMEM;
 
-    key = pj_pool_alloc(pool, MAX*sizeof(pj_ioqueue_key_t*));
-    sock = pj_pool_alloc(pool, MAX*sizeof(pj_sock_t));
+    key = (pj_ioqueue_key_t **)pj_pool_alloc(pool, MAX*sizeof(pj_ioqueue_key_t*));
+    sock = (pj_sock_t *)pj_pool_alloc(pool, MAX*sizeof(pj_sock_t));
     
     /* Create IOQueue */
     rc = pj_ioqueue_create(pool, MAX, &ioqueue);

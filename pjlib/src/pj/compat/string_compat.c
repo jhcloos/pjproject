@@ -51,8 +51,10 @@ PJ_DEF(int) strncasecmp(const char *s1, const char *s2, int len)
 PJ_DEF(int) snprintf(char *s1, pj_size_t len, const char *s2, ...)
 {
     int ret;
-    
     va_list arg;
+
+    PJ_UNUSED_ARG(len);
+
     va_start(arg, s2);
     ret = vsprintf(s1, s2, arg);
     va_end(arg);
@@ -62,6 +64,7 @@ PJ_DEF(int) snprintf(char *s1, pj_size_t len, const char *s2, ...)
 
 PJ_DEF(int) vsnprintf(char *s1, pj_size_t len, const char *s2, va_list arg)
 {
+    PJ_UNUSED_ARG(len);
     return vsprintf(s1,s2,arg);
 }
 

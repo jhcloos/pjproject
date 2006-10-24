@@ -18,7 +18,6 @@
  */
 #include <pj/pool.h>
 #include <pj/log.h>
-#include <pj/except.h>
 #include <pj/assert.h>
 #include <pj/os.h>
 

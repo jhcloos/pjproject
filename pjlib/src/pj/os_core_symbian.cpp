@@ -17,9 +17,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 
-#include <e32cmn.h>
-#include <e32std.h>
-
 #include <pj/os.h>
 #include <pj/assert.h>
 #include <pj/pool.h>
@@ -30,12 +27,14 @@
 #include <pj/except.h>
 #include <pj/errno.h>
 
+#include "os_symbian.h"
+
 
 #define PJ_MAX_TLS	    32
 #define DUMMY_MUTEX	    ((pj_mutex_t*)101)
 #define DUMMY_SEMAPHORE	    ((pj_sem_t*)102)
-
-
+#define THIS_FILE	    "os_core_symbian.c"
+ 
 /*
  * Note:
  *
@@ -60,11 +59,190 @@ static int tls_vars[PJ_MAX_TLS];
 
 
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// CPjTimeoutTimer implementation
+//
+
+CPjTimeoutTimer::CPjTimeoutTimer()
+: CActive(EPriorityNormal), hasTimedOut_(false)
+{
+}
+
+CPjTimeoutTimer::~CPjTimeoutTimer()
+{
+    if (IsActive())
+	Cancel();
+    timer_.Close();
+}
+
+void CPjTimeoutTimer::ConstructL()
+{
+    timer_.CreateLocal();
+    CActiveScheduler::Add(this);
+}
+
+CPjTimeoutTimer *CPjTimeoutTimer::NewL()
+{
+    CPjTimeoutTimer *self = new (ELeave) CPjTimeoutTimer;
+    CleanupStack::PushL(self);
+
+    self->ConstructL();
+
+    CleanupStack::Pop(self);
+    return self;
+
+}
+
+void CPjTimeoutTimer::StartTimer(TUint miliSeconds)
+{
+    if (IsActive())
+	Cancel();
+
+    hasTimedOut_ = false;
+    timer_.After(iStatus, miliSeconds * 1000);
+    SetActive();
+}
+
+bool CPjTimeoutTimer::HasTimedOut() const
+{
+    return hasTimedOut_;
+}
+
+void CPjTimeoutTimer::RunL()
+{
+    hasTimedOut_ = true;
+}
+
+void CPjTimeoutTimer::DoCancel()
+{
+    timer_.Cancel();
+}
+
+TInt CPjTimeoutTimer::RunError(TInt aError)
+{
+    PJ_UNUSED_ARG(aError);
+    return KErrNone;
+}
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// PjSymbianOS implementation
+//
+
+PjSymbianOS::PjSymbianOS()
+: isSocketServInitialized_(false), isResolverInitialized_(false),
+  console_(NULL), selectTimeoutTimer_(NULL)
+{
+}
+
+// Get PjSymbianOS instance
+PjSymbianOS *PjSymbianOS::Instance()
+{
+    static PjSymbianOS instance_;
+    return &instance_;
+}
+
+
+// Initialize
+TInt PjSymbianOS::Initialize()
+{
+    TInt err;
+
+    selectTimeoutTimer_ = CPjTimeoutTimer::NewL();
+
+#if 0
+    pj_assert(console_ == NULL);
+    TRAPD(err, console_ = Console::NewL(_L("PJLIB"), 
+				        TSize(KConsFullScreen,KConsFullScreen)));
+    return err;
+#endif
+
+    if (!isSocketServInitialized_) {
+	err = socketServ_.Connect();
+	if (err != KErrNone)
+	    goto on_error;
+
+	isSocketServInitialized_ = true;
+    }
+
+    if (!isResolverInitialized_) {
+	err = hostResolver_.Open(SocketServ(), KAfInet, KSockStream);
+	if (err != KErrNone)
+	    goto on_error;
+
+	isResolverInitialized_ = true;
+    }
+
+    return KErrNone;
+
+on_error:
+    Shutdown();
+    return err;
+}
+
+// Shutdown
+void PjSymbianOS::Shutdown()
+{
+    if (isResolverInitialized_) {
+	hostResolver_.Close();
+	isResolverInitialized_ = false;
+    }
+
+    if (isSocketServInitialized_) {
+	socketServ_.Close();
+	isSocketServInitialized_ = false;
+    }
+
+    if (console_) {
+	delete console_;
+	console_ = NULL;
+    }
+
+    if (selectTimeoutTimer_) {
+	delete selectTimeoutTimer_;
+	selectTimeoutTimer_ = NULL;
+    }
+}
+
+// Convert to Unicode
+TInt PjSymbianOS::ConvertToUnicode(TDes16 &aUnicode, const TDesC8 &aForeign)
+{
+#if 0
+    pj_assert(conv_ != NULL);
+    return conv_->ConvertToUnicode(aUnicode, aForeign, convToUnicodeState_);
+#else
+    return CnvUtfConverter::ConvertToUnicodeFromUtf8(aUnicode, aForeign);
+#endif
+}
+
+// Convert from Unicode
+TInt PjSymbianOS::ConvertFromUnicode(TDes8 &aForeign, const TDesC16 &aUnicode)
+{
+#if 0
+    pj_assert(conv_ != NULL);
+    return conv_->ConvertFromUnicode(aForeign, aUnicode, convToAnsiState_);
+#else
+    return CnvUtfConverter::ConvertFromUnicodeToUtf8(aForeign, aUnicode);
+#endif
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// PJLIB os.h implementation
+//
+
 PJ_DEF(pj_uint32_t) pj_getpid(void)
 {
     return 0;
 }
 
+
+PJ_DECL(void) pj_shutdown(void);
 
 /*
  * pj_init(void).
@@ -73,7 +251,44 @@ PJ_DEF(pj_uint32_t) pj_getpid(void)
 PJ_DEF(pj_status_t) pj_init(void)
 {
     pj_ansi_strcpy(main_thread.obj_name, "pjthread");
+
+    // Initialize PjSymbianOS instance
+    PjSymbianOS *os = PjSymbianOS::Instance();
+
+    PJ_LOG(4,(THIS_FILE, "Initializing PJLIB for Symbian OS.."));
+
+    TInt err;
+    err = os->Initialize();
+    if (err != KErrNone)
+	goto on_error;
+
+    PJ_LOG(5,(THIS_FILE, "PJLIB initialized."));
     return PJ_SUCCESS;
+
+on_error:
+    pj_shutdown();
+    return PJ_RETURN_OS_ERROR(err);
+}
+
+
+PJ_DEF(void) pj_shutdown(void)
+{
+    PjSymbianOS *os = PjSymbianOS::Instance();
+    os->Shutdown();
+}
+
+
+/*
+ * pj_thread_register(..)
+ */
+PJ_DEF(pj_status_t) pj_thread_register ( const char *cstr_thread_name,
+					 pj_thread_desc desc,
+                                         pj_thread_t **thread_ptr)
+{
+    PJ_UNUSED_ARG(cstr_thread_name);
+    PJ_UNUSED_ARG(desc);
+    PJ_UNUSED_ARG(thread_ptr);
+    return PJ_EINVALIDOP;
 }
 
 
@@ -149,10 +364,8 @@ PJ_DEF(pj_status_t) pj_thread_destroy(pj_thread_t *rec)
  */
 PJ_DEF(pj_status_t) pj_thread_sleep(unsigned msec)
 {
-    PJ_UNUSED_ARG(msec);
-
-    /* Not supported either */
-    return PJ_EINVALIDOP;
+    User::After(msec*1000);
+    return PJ_SUCCESS;
 }
 
 

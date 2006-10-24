@@ -17,7 +17,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 #include "test.h"
-#include <pjlib.h>
+#include <pj/file_io.h>
+#include <pj/file_access.h>
+
 
 #if INCLUDE_FILE_TEST
 

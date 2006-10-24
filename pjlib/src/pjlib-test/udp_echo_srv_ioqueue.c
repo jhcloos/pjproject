@@ -16,7 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
-#include <pjlib.h>
+#include <pj/errno.h>
+#include <pj/ioqueue.h>
+#include <pj/pool.h>
+#include <pj/sock.h>
 #include "test.h"
 
 static pj_ioqueue_key_t *key;
@@ -117,7 +120,7 @@ static void on_write_complete(pj_ioqueue_key_t *key,
 
 static int worker_thread(void *arg)
 {
-    pj_ioqueue_t *ioqueue = arg;
+    pj_ioqueue_t *ioqueue = (pj_ioqueue_t *)arg;
     struct op_key read_op, write_op;
     char recv_buf[512], send_buf[512];
     pj_ssize_t length;

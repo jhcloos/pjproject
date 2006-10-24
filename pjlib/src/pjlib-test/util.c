@@ -17,7 +17,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 #include "test.h"
-#include <pjlib.h>
+#include <pj/errno.h>
+#include <pj/log.h>
+#include <pj/os.h>
+#include <pj/sock.h>
+#include <pj/string.h>
+
 
 #define THIS_FILE "util.c"
 

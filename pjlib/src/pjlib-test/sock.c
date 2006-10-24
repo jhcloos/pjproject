@@ -16,7 +16,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
-#include <pjlib.h>
+#include <pj/errno.h>
+#include <pj/ioqueue.h>
+#include <pj/log.h>
+#include <pj/sock.h>
+#include <pj/string.h>
 #include "test.h"
 
 
@@ -64,10 +68,6 @@
 #define TCP_PORT        (UDP_PORT+10)
 #define BIG_DATA_LEN	9000
 #define ADDRESS		"127.0.0.1"
-#define A0		127
-#define A1		0
-#define A2		0
-#define A3		1
 
 
 static char bigdata[BIG_DATA_LEN];
@@ -79,6 +79,12 @@ static int format_test(void)
     unsigned char *p;
     pj_in_addr addr;
     const pj_str_t *hostname;
+#if defined(PJ_SYMBIAN) && PJ_SYMBIAN!=0
+    /* Symbian IP address is saved in host order */
+    unsigned char A[] = {1, 0, 0, 127};
+#else
+    unsigned char A[] = {127, 0, 0, 1};
+#endif
 
     PJ_LOG(3,("test", "...format_test()"));
     
@@ -88,7 +94,7 @@ static int format_test(void)
     
     /* Check the result. */
     p = (unsigned char*)&addr;
-    if (p[0]!=A0 || p[1]!=A1 || p[2]!=A2 || p[3]!=A3) {
+    if (p[0]!=A[0] || p[1]!=A[1] || p[2]!=A[2] || p[3]!=A[3]) {
 	PJ_LOG(3,("test", "  error: mismatched address. p0=%d, p1=%d, "
 			  "p2=%d, p3=%d", p[0] & 0xFF, p[1] & 0xFF, 
 			   p[2] & 0xFF, p[3] & 0xFF));
@@ -96,11 +102,11 @@ static int format_test(void)
     }
 
     /* pj_inet_ntoa() */
-    p = pj_inet_ntoa(addr);
+    p = (unsigned char*)pj_inet_ntoa(addr);
     if (!p)
 	return -20;
 
-    if (pj_strcmp2(&s, p) != 0)
+    if (pj_strcmp2(&s, (char*)p) != 0)
 	return -30;
 
     /* pj_gethostname() */

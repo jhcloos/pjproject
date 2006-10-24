@@ -283,13 +283,16 @@ static int strcmp_test(void)
 
 int string_test(void)
 {
-    const pj_str_t hello_world = { HELLO_WORLD, strlen(HELLO_WORLD) };
-    const pj_str_t just_hello = { JUST_HELLO, strlen(JUST_HELLO) };
+    pj_str_t hello_world;
+    pj_str_t just_hello;
     pj_str_t s1, s2, s3, s4, s5;
     enum { RCOUNT = 10, RLEN = 16 };
     pj_str_t random[RCOUNT];
     pj_pool_t *pool;
     int i;
+
+    hello_world = pj_str(HELLO_WORLD);
+    just_hello = pj_str(JUST_HELLO);
 
     pool = pj_pool_create(mem, NULL, 4096, 0, NULL);
     if (!pool) return -5;
@@ -327,7 +330,7 @@ int string_test(void)
     /* 
      * pj_strcpy(), pj_strcat() 
      */
-    s3.ptr = pj_pool_alloc(pool, 256);
+    s3.ptr = (char*)pj_pool_alloc(pool, 256);
     if (!s3.ptr) 
 	return -200;
     pj_strcpy(&s3, &s2);
@@ -347,7 +350,7 @@ int string_test(void)
     /* 
      * pj_utoa() 
      */
-    s5.ptr = pj_pool_alloc(pool, 16);
+    s5.ptr = (char*)pj_pool_alloc(pool, 16);
     if (!s5.ptr)
 	return -270;
     s5.slen = pj_utoa(UL_VALUE, s5.ptr);
@@ -365,7 +368,7 @@ int string_test(void)
     for (i=0; i<RCOUNT; ++i) {
 	int j;
 	
-	random[i].ptr = pj_pool_alloc(pool, RLEN);
+	random[i].ptr = (char*)pj_pool_alloc(pool, RLEN);
 	if (!random[i].ptr)
 	    return -320;
 

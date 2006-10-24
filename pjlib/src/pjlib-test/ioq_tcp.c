@@ -33,7 +33,14 @@
 
 #if INCLUDE_TCP_IOQUEUE_TEST
 
-#include <pjlib.h>
+#include <pj/assert.h>
+#include <pj/errno.h>
+#include <pj/ioqueue.h>
+#include <pj/log.h>
+#include <pj/pool.h>
+#include <pj/sock.h>
+#include <pj/string.h>
+
 
 #if PJ_HAS_TCP
 

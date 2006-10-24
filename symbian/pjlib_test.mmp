@@ -1,4 +1,4 @@
-TARGET 		pjlib-test-symbian.exe
+TARGET 		pjlib_test.exe
 TARGETTYPE 	exe
 UID		0x100039CE 0x10004299
 VENDORID	0x70000001
@@ -43,15 +43,16 @@ SOURCE	udp_echo_srv_sync.c
 SOURCE	util.c
 
 SOURCE	main_symbian.cpp
+//SOURCE	main.c
 
 
 SYSTEMINCLUDE	..\pjlib\include
-SYSTEMINCLUDE	\symbian\9.1\S60_3rd\epoc32\include
-SYSTEMINCLUDE	\symbian\9.1\S60_3rd\epoc32\include\libc
+SYSTEMINCLUDE	\epoc32\include
+SYSTEMINCLUDE	\epoc32\include\libc
 //SYSTEMINCLUDE	\symbian\9.1\S60_3rd_MR\epoc32\include
 //SYSTEMINCLUDE	\symbian\9.1\S60_3rd_MR\epoc32\include\libc
 
-LIBRARY		pjlib-symbian.lib euser.lib estlib.lib eexe.lib
-		//eexe.lib 
+LIBRARY		pjlib.lib esock.lib insock.lib charconv.lib euser.lib estlib.lib eexe.lib
+STATICLIBRARY   ecrt0.lib
 CAPABILITY	None
 

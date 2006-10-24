@@ -17,7 +17,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 #include "test.h"
-#include <pjlib.h>
+#include <pj/errno.h>
+#include <pj/ioqueue.h>
+#include <pj/log.h>
+#include <pj/os.h>
+#include <pj/pool.h>
+#include <pj/sock.h>
 #include <pj/compat/high_precision.h>
 
 
@@ -69,8 +74,8 @@ static int sock_producer_consumer(int sock_type,
     }
 
     /* Create buffers. */
-    outgoing_buffer = pj_pool_alloc(pool, buf_size);
-    incoming_buffer = pj_pool_alloc(pool, buf_size);
+    outgoing_buffer = (char*)pj_pool_alloc(pool, buf_size);
+    incoming_buffer = (char*)pj_pool_alloc(pool, buf_size);
 
     /* Start loop. */
     pj_get_timestamp(&start);

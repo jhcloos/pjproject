@@ -17,7 +17,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 #include "test.h"
-#include <pjlib.h>
+#include <pj/errno.h>
+#include <pj/ioqueue.h>
+#include <pj/log.h>
+#include <pj/os.h>
+#include <pj/pool.h>
+#include <pj/sock.h>
 #include <pj/compat/high_precision.h>
 
 /**
@@ -72,7 +77,7 @@ static void on_read_complete(pj_ioqueue_key_t *key,
                              pj_ioqueue_op_key_t *op_key,
                              pj_ssize_t bytes_read)
 {
-    test_item *item = pj_ioqueue_get_user_data(key);
+    test_item *item = (test_item*)pj_ioqueue_get_user_data(key);
     pj_status_t rc;
     int data_is_available = 1;
 
@@ -150,7 +155,7 @@ static void on_write_complete(pj_ioqueue_key_t *key,
                               pj_ioqueue_op_key_t *op_key,
                               pj_ssize_t bytes_sent)
 {
-    test_item *item = pj_ioqueue_get_user_data(key);
+    test_item *item = (test_item*)pj_ioqueue_get_user_data(key);
     
     //TRACE_((THIS_FILE, "     write complete: sent = %d", bytes_sent));
 
@@ -188,7 +193,7 @@ struct thread_arg
 /* The worker thread. */
 static int worker_thread(void *p)
 {
-    struct thread_arg *arg = p;
+    struct thread_arg *arg = (struct thread_arg *)p;
     const pj_time_val timeout = {0, 100};
     int rc;
 
@@ -249,8 +254,8 @@ static int perform_test(int sock_type, const char *type_name,
     if (!pool)
         return -10;
 
-    items = pj_pool_alloc(pool, sockpair_cnt*sizeof(test_item));
-    thread = pj_pool_alloc(pool, thread_cnt*sizeof(pj_thread_t*));
+    items = (test_item *)pj_pool_alloc(pool, sockpair_cnt*sizeof(test_item));
+    thread = (pj_thread_t **)pj_pool_alloc(pool, thread_cnt*sizeof(pj_thread_t*));
 
     TRACE_((THIS_FILE, "     creating ioqueue.."));
     rc = pj_ioqueue_create(pool, sockpair_cnt*2, &ioqueue);
@@ -265,8 +270,8 @@ static int perform_test(int sock_type, const char *type_name,
 
         items[i].ioqueue = ioqueue;
         items[i].buffer_size = buffer_size;
-        items[i].outgoing_buffer = pj_pool_alloc(pool, buffer_size);
-        items[i].incoming_buffer = pj_pool_alloc(pool, buffer_size);
+        items[i].outgoing_buffer = (char*)pj_pool_alloc(pool, buffer_size);
+        items[i].incoming_buffer = (char*)pj_pool_alloc(pool, buffer_size);
         items[i].bytes_recv = items[i].bytes_sent = 0;
 
         /* randomize outgoing buffer. */
@@ -331,7 +336,7 @@ static int perform_test(int sock_type, const char *type_name,
     for (i=0; i<thread_cnt; ++i) {
 	struct thread_arg *arg;
 
-	arg = pj_pool_zalloc(pool, sizeof(*arg));
+	arg = (struct thread_arg *)pj_pool_zalloc(pool, sizeof(*arg));
 	arg->id = i;
 	arg->ioqueue = ioqueue;
 	arg->counter = 0;
@@ -443,6 +448,11 @@ int ioqueue_perf_test(void)
 {
     enum { BUF_SIZE = 512 };
     int i, rc;
+    enum
+    {
+	SOCK_DGRAM = 1,
+	SOCK_STREAM = 2,
+    };
     struct {
         int         type;
         const char *type_name;
@@ -450,49 +460,49 @@ int ioqueue_perf_test(void)
         int         sockpair_cnt;
     } test_param[] = 
     {
-        { PJ_SOCK_DGRAM, "udp", 1, 1},
-        { PJ_SOCK_DGRAM, "udp", 1, 2},
-        { PJ_SOCK_DGRAM, "udp", 1, 4},
-        { PJ_SOCK_DGRAM, "udp", 1, 8},
-        { PJ_SOCK_DGRAM, "udp", 2, 1},
-        { PJ_SOCK_DGRAM, "udp", 2, 2},
-        { PJ_SOCK_DGRAM, "udp", 2, 4},
-        { PJ_SOCK_DGRAM, "udp", 2, 8},
-        { PJ_SOCK_DGRAM, "udp", 4, 1},
-        { PJ_SOCK_DGRAM, "udp", 4, 2},
-        { PJ_SOCK_DGRAM, "udp", 4, 4},
-        { PJ_SOCK_DGRAM, "udp", 4, 8},
-        { PJ_SOCK_DGRAM, "udp", 4, 16},
-        { PJ_SOCK_STREAM, "tcp", 1, 1},
-        { PJ_SOCK_STREAM, "tcp", 1, 2},
-        { PJ_SOCK_STREAM, "tcp", 1, 4},
-        { PJ_SOCK_STREAM, "tcp", 1, 8},
-        { PJ_SOCK_STREAM, "tcp", 2, 1},
-        { PJ_SOCK_STREAM, "tcp", 2, 2},
-        { PJ_SOCK_STREAM, "tcp", 2, 4},
-        { PJ_SOCK_STREAM, "tcp", 2, 8},
-        { PJ_SOCK_STREAM, "tcp", 4, 1},
-        { PJ_SOCK_STREAM, "tcp", 4, 2},
-        { PJ_SOCK_STREAM, "tcp", 4, 4},
-        { PJ_SOCK_STREAM, "tcp", 4, 8},
-        { PJ_SOCK_STREAM, "tcp", 4, 16},
+        { SOCK_DGRAM, "udp", 1, 1},
+        { SOCK_DGRAM, "udp", 1, 2},
+        { SOCK_DGRAM, "udp", 1, 4},
+        { SOCK_DGRAM, "udp", 1, 8},
+        { SOCK_DGRAM, "udp", 2, 1},
+        { SOCK_DGRAM, "udp", 2, 2},
+        { SOCK_DGRAM, "udp", 2, 4},
+        { SOCK_DGRAM, "udp", 2, 8},
+        { SOCK_DGRAM, "udp", 4, 1},
+        { SOCK_DGRAM, "udp", 4, 2},
+        { SOCK_DGRAM, "udp", 4, 4},
+        { SOCK_DGRAM, "udp", 4, 8},
+        { SOCK_DGRAM, "udp", 4, 16},
+        { SOCK_STREAM, "tcp", 1, 1},
+        { SOCK_STREAM, "tcp", 1, 2},
+        { SOCK_STREAM, "tcp", 1, 4},
+        { SOCK_STREAM, "tcp", 1, 8},
+        { SOCK_STREAM, "tcp", 2, 1},
+        { SOCK_STREAM, "tcp", 2, 2},
+        { SOCK_STREAM, "tcp", 2, 4},
+        { SOCK_STREAM, "tcp", 2, 8},
+        { SOCK_STREAM, "tcp", 4, 1},
+        { SOCK_STREAM, "tcp", 4, 2},
+        { SOCK_STREAM, "tcp", 4, 4},
+        { SOCK_STREAM, "tcp", 4, 8},
+        { SOCK_STREAM, "tcp", 4, 16},
 /*
-	{ PJ_SOCK_DGRAM, "udp", 32, 1},
-	{ PJ_SOCK_DGRAM, "udp", 32, 1},
-	{ PJ_SOCK_DGRAM, "udp", 32, 1},
-	{ PJ_SOCK_DGRAM, "udp", 32, 1},
-	{ PJ_SOCK_DGRAM, "udp", 1, 32},
-	{ PJ_SOCK_DGRAM, "udp", 1, 32},
-	{ PJ_SOCK_DGRAM, "udp", 1, 32},
-	{ PJ_SOCK_DGRAM, "udp", 1, 32},
-	{ PJ_SOCK_STREAM, "tcp", 32, 1},
-	{ PJ_SOCK_STREAM, "tcp", 32, 1},
-	{ PJ_SOCK_STREAM, "tcp", 32, 1},
-	{ PJ_SOCK_STREAM, "tcp", 32, 1},
-	{ PJ_SOCK_STREAM, "tcp", 1, 32},
-	{ PJ_SOCK_STREAM, "tcp", 1, 32},
-	{ PJ_SOCK_STREAM, "tcp", 1, 32},
-	{ PJ_SOCK_STREAM, "tcp", 1, 32},
+	{ SOCK_DGRAM, "udp", 32, 1},
+	{ SOCK_DGRAM, "udp", 32, 1},
+	{ SOCK_DGRAM, "udp", 32, 1},
+	{ SOCK_DGRAM, "udp", 32, 1},
+	{ SOCK_DGRAM, "udp", 1, 32},
+	{ SOCK_DGRAM, "udp", 1, 32},
+	{ SOCK_DGRAM, "udp", 1, 32},
+	{ SOCK_DGRAM, "udp", 1, 32},
+	{ SOCK_STREAM, "tcp", 32, 1},
+	{ SOCK_STREAM, "tcp", 32, 1},
+	{ SOCK_STREAM, "tcp", 32, 1},
+	{ SOCK_STREAM, "tcp", 32, 1},
+	{ SOCK_STREAM, "tcp", 1, 32},
+	{ SOCK_STREAM, "tcp", 1, 32},
+	{ SOCK_STREAM, "tcp", 1, 32},
+	{ SOCK_STREAM, "tcp", 1, 32},
 */
     };
     pj_size_t best_bandwidth;
@@ -502,6 +512,13 @@ int ioqueue_perf_test(void)
     PJ_LOG(3,(THIS_FILE, "   ======================================="));
     PJ_LOG(3,(THIS_FILE, "   Type  Threads  Skt.Pairs      Bandwidth"));
     PJ_LOG(3,(THIS_FILE, "   ======================================="));
+
+    for (i=0; i<PJ_ARRAY_SIZE(test_param); ++i) {
+	if (test_param[i].type == SOCK_DGRAM)
+	    test_param[i].type = PJ_SOCK_DGRAM;
+	else if (test_param[i].type == SOCK_STREAM)
+	    test_param[i].type = PJ_SOCK_STREAM;
+    }
 
     best_bandwidth = 0;
     for (i=0; i<sizeof(test_param)/sizeof(test_param[0]); ++i) {

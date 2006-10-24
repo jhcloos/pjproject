@@ -632,6 +632,8 @@ PJ_DEF(pj_status_t) pj_sock_accept( pj_sock_t serverfd,
     PJ_CHECK_STACK();
     PJ_ASSERT_RETURN(newsock != NULL, PJ_EINVAL);
 
+    hello
+
 #if defined(PJ_SOCKADDR_HAS_LEN) && PJ_SOCKADDR_HAS_LEN!=0
     if (addr) {
 	SET_LEN(addr, *addrlen);

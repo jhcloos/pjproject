@@ -189,6 +189,18 @@ PJ_DECL(pj_status_t) pj_register_strerror(pj_status_t start_code,
  */
 
 /**
+ * Use this macro to generate error message text for your error code,
+ * so that they look uniformly as the rest of the libraries.
+ *
+ * @param code	The error code
+ * @param msg	The error test.
+ */
+#ifndef PJ_BUILD_ERR
+#   define PJ_BUILD_ERR(code,msg) { code, msg " (" #code ")" }
+#endif
+
+
+/**
  * @hideinitializer
  * Unknown error has been reported.
  */
@@ -284,6 +296,11 @@ PJ_DECL(pj_status_t) pj_register_strerror(pj_status_t start_code,
  * the error/status range below.
  */
 #define PJ_ERRNO_SPACE_SIZE	50000
+
+/**
+ * See errno.c.
+ */
+#define PJ_ERRNO_SPACE_GAP	10000
 
 /**
  * PJ_ERRNO_START_STATUS is where PJLIB specific status codes start.
