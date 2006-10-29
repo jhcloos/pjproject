@@ -566,9 +566,6 @@ PJ_DEF(pj_status_t) pj_sock_getsockname( pj_sock_t sock,
     CPjSocket *pjSock = (CPjSocket*)sock;
     RSocket &rSock = pjSock->Socket();
 
-    // Socket must be connected.
-    PJ_ASSERT_RETURN(pjSock->IsConnected(), PJ_EINVALIDOP);
-
     TInetAddr inetAddr;
     rSock.LocalName(inetAddr);
 

@@ -143,7 +143,8 @@ static void pool_callback( pj_pool_t *pool, pj_size_t size )
 /* Compare module name, used for searching module based on name. */
 static int cmp_mod_name(void *name, const void *mod)
 {
-    return pj_stricmp(name, &((pjsip_module*)mod)->name);
+    return pj_stricmp((pj_str_t*)name, 
+		      (const pj_str_t*)&((pjsip_module*)mod)->name);
 }
 
 /*
@@ -400,7 +401,7 @@ PJ_DEF(pj_status_t) pjsip_endpt_create(pj_pool_factory *pf,
 	return PJ_ENOMEM;
 
     /* Create endpoint. */
-    endpt = pj_pool_zalloc(pool, sizeof(*endpt));
+    endpt = (pjsip_endpoint*) pj_pool_zalloc(pool, sizeof(*endpt));
     endpt->pool = pool;
     endpt->pf = pf;
 
@@ -590,6 +591,7 @@ PJ_DEF(pj_status_t) pjsip_endpt_handle_events(pjsip_endpoint *endpt,
 {
     /* timeout is 'out' var. This just to make compiler happy. */
     pj_time_val timeout = { 0, 0};
+    pj_time_val *p_timeout;
 
     PJ_LOG(6, (THIS_FILE, "pjsip_endpt_handle_events()"));
 
@@ -611,8 +613,14 @@ PJ_DEF(pj_status_t) pjsip_endpt_handle_events(pjsip_endpoint *endpt,
 	timeout = *max_timeout;
     }
 
+    /* Timer heap may return PJ_MAXINT32 when it has no entries */
+    if (timeout.sec == PJ_MAXINT32 || timeout.msec == PJ_MAXINT32)
+	p_timeout = NULL;
+    else
+	p_timeout = &timeout;
+
     /* Poll ioqueue. */
-    if (pj_ioqueue_poll( endpt->ioqueue, &timeout) < 0) {
+    if (pj_ioqueue_poll( endpt->ioqueue, p_timeout) < 0) {
 	pj_thread_sleep(1);
 	return pj_get_netos_error();
     } else {
@@ -675,8 +683,8 @@ static void endpt_on_rx_msg( pjsip_endpoint *endpt,
 	int port = rdata->msg_info.via->sent_by.port;
 	pj_bool_t mismatch = PJ_FALSE;
 	if (port == 0) {
-	    int type;
-	    type = rdata->tp_info.transport->key.type;
+	    pjsip_transport_type_e type;
+	    type = (pjsip_transport_type_e) rdata->tp_info.transport->key.type;
 	    port = pjsip_transport_get_default_port_for_type(type);
 	}
 	local_addr = &rdata->tp_info.transport->local_name.host;

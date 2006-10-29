@@ -1,41 +1,22 @@
-//Auto-generated file. Please do not modify.
-//#include <e32cmn.h>
-
-//#pragma data_seg(".SYMBIAN")
-//__EMULATOR_IMAGE_HEADER2 (0x1000007a,0x00000000,0x00000000,EPriorityForeground,0x00000000u,0x00000000u,0x00000000,0x00000000,0x00000000,0)
-//#pragma data_seg()
-
-#include "test.h"
 #include <stdlib.h>
-#include <pj/errno.h>
-#include <pj/os.h>
-#include <pj/log.h>
-#include <pj/unicode.h>
 #include <stdio.h>
-
 #include <e32std.h>
-
-#if 0
-int main()
-{
-    int err = 0;
-    int exp = 0;
-
-    err = test_main();
-    //err = test_main();
-
-    if (err)
-	return err;
-    return exp;
-    //return 0;
-}
-
-#else
-#include <pj/os.h>
-
 #include <e32base.h>
 #include <e32std.h>
 #include <e32cons.h>            // Console
+
+/* PJLIB Unicode conversion */
+#include <pj/unicode.h>
+
+/* Log writing */
+#include <pj/log.h>
+
+
+/* This will be defined in application's code */
+extern "C"
+{
+	int pj_app_main(int argc, char *argv[]);
+}
 
 
 
@@ -51,7 +32,8 @@ LOCAL_C void MainL()
     //
     // add your program code here, example code below
     //
-    int rc = test_main();
+    char *argv[] = { "main_symbian", NULL };
+    int rc = pj_app_main(1, argv);
 
     console->Printf(_L(" [press any key]\n"));
     console->Getch();
@@ -135,7 +117,7 @@ TInt ProgramStarter::RunError(TInt aError)
 
 
 LOCAL_C void DoStartL()
-    {
+{
     // Create active scheduler (to run active objects)
     CActiveScheduler* scheduler = new (ELeave) MyScheduler;
     CleanupStack::PushL(scheduler);
@@ -145,7 +127,7 @@ LOCAL_C void DoStartL()
     starter->Start();
 
     CActiveScheduler::Start();
-    }
+}
 
 
 //  Global Functions
@@ -162,7 +144,7 @@ static void log_writer(int level, const char *buf, int len)
 
 
 GLDEF_C TInt E32Main()
-    {
+{
     // Create cleanup stack
     __UHEAP_MARK;
     CTrapCleanup* cleanup = CTrapCleanup::New();
@@ -185,7 +167,6 @@ GLDEF_C TInt E32Main()
     delete cleanup;
     __UHEAP_MARKEND;
     return KErrNone;
-    }
+}
 
-#endif	/* if 0 */
 

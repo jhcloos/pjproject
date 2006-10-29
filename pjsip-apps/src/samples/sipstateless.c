@@ -31,6 +31,7 @@
 #include <pjsip.h>
 #include <pjlib-util.h>
 #include <pjlib.h>
+#include "../../../pjlib/src/pj/os_symbian.h"
 
 
 /* If this macro is set, UDP transport will be initialized at port 5060 */
@@ -61,11 +62,25 @@ static pj_bool_t on_rx_request( pjsip_rx_data *rdata )
 
 
 
+extern "C"
+{
+	int pj_app_main(int argc, char *argv[]);
+}
+
+
+static void app_perror(pj_status_t status)
+{
+    char errmsg[PJ_ERR_MSG_SIZE];
+    pj_strerror(status, errmsg, sizeof(errmsg));
+    PJ_LOG(1,("main", "Error: %s", errmsg));
+}
+
+
 /*
- * main()
+ * pj_app_main()
  *
  */
-int main()
+int pj_app_main(int argc, char *argv[])
 {
     pj_caching_pool cp;
     pjsip_module mod_app =
@@ -92,13 +107,12 @@ int main()
     status = pj_init();
     PJ_ASSERT_RETURN(status == PJ_SUCCESS, 1);
 
-
     /* Then init PJLIB-UTIL: */
     status = pjlib_util_init();
     PJ_ASSERT_RETURN(status == PJ_SUCCESS, 1);
 
     /* Must create a pool factory before we can allocate any memory. */
-    pj_caching_pool_init(&cp, &pj_pool_factory_default_policy, 0);
+    pj_caching_pool_init(&cp, pj_pool_factory_get_default_policy(), 0);
 
 
     /* Create global endpoint: */
@@ -134,8 +148,11 @@ int main()
 
 	status = pjsip_udp_transport_start( sip_endpt, &addr, NULL, 1, NULL);
 	if (status != PJ_SUCCESS) {
+	    char errmsg[PJ_ERR_MSG_SIZE];
+
+	    pj_strerror(status, errmsg, sizeof(errmsg));
 	    PJ_LOG(3,(THIS_FILE, 
-		      "Error starting UDP transport (port in use?)"));
+		      "Error starting UDP transport: %s", errmsg));
 	    return 1;
 	}
     }

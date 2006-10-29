@@ -235,6 +235,7 @@ static int stricmp_test(void)
 	//return -700;
     }
 
+    if (c2 == 0) c2 = 1;
     PJ_LOG(3, ("", "  time: stricmp=%u, stricmp_alnum=%u (speedup=%d.%02dx)", 
 		   c1, c2,
 		   (c1 * 100 / c2) / 100,

@@ -21,7 +21,6 @@
 #include <pjsip/sip_parser.h>
 #include <pj/pool.h>
 #include <pj/string.h>
-#include <pj/except.h>
 
 /*
  * Event header.

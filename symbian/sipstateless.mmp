@@ -1,0 +1,42 @@
+TARGET 		sipstateless.exe
+TARGETTYPE 	exe
+UID		0x100039CE 0x10004299
+VENDORID	0x70000001
+
+SOURCEPATH	..\pjsip-apps\src\samples
+
+MACRO		PJ_M_I386=1
+MACRO		PJ_SYMBIAN=1
+MACRO		PJ_IMPORTING
+
+OPTION		CW -lang c++
+
+// Test files
+
+SOURCE	sipstateless.c
+SOURCE	main_symbian.cpp
+
+SYSTEMINCLUDE	..\pjlib\include 
+SYSTEMINCLUDE	..\pjlib-util\include 
+SYSTEMINCLUDE	..\pjsip\include 
+SYSTEMINCLUDE	..\pjmedia\include
+
+
+SYSTEMINCLUDE	\epoc32\include
+SYSTEMINCLUDE	\epoc32\include\libc
+
+LIBRARY		pjsip_ua.lib 
+LIBRARY		pjsip_simple.lib 
+LIBRARY		pjsip.lib 
+LIBRARY		pjsdp.lib 
+LIBRARY		pjlib_util.lib 
+LIBRARY		pjlib.lib 
+LIBRARY		esock.lib 
+LIBRARY		insock.lib 
+LIBRARY		charconv.lib 
+LIBRARY		euser.lib 
+LIBRARY		estlib.lib 
+LIBRARY		eexe.lib
+STATICLIBRARY   ecrt0.lib
+CAPABILITY	None
+

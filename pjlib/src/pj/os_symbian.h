@@ -166,8 +166,8 @@ protected:
     virtual TInt RunError(TInt aError);
 
 private:
-    RTimer timer_;
-    bool   hasTimedOut_;
+    RTimer	timer_;
+    pj_bool_t	hasTimedOut_;
 
     CPjTimeoutTimer();
     void ConstructL();
@@ -278,6 +278,7 @@ public:
     void WaitForActiveObjects(TInt aPriority = CActive::EPriorityStandard)
     {
 	TInt aError;
+	User::WaitForAnyRequest();
 	CActiveScheduler::RunIfReady(aError, aPriority);
     }
 
@@ -294,7 +295,6 @@ private:
 
 private:
     PjSymbianOS();
-    
 };
 
 

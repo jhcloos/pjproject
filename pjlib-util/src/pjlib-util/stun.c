@@ -35,7 +35,7 @@ PJ_DEF(pj_status_t) pj_stun_create_bind_req( pj_pool_t *pool,
     PJ_CHECK_STACK();
 
 
-    hdr = pj_pool_calloc(pool, 1, sizeof(pj_stun_msg_hdr));
+    hdr = (pj_stun_msg_hdr*) pj_pool_calloc(pool, 1, sizeof(pj_stun_msg_hdr));
     if (!hdr)
 	return PJ_ENOMEM;
 

@@ -17,6 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
 #include "test.h"
+#include <pj/os.h>
 
 /**
  * \page page_pjlib_ioqueue_tcp_test Test: I/O Queue (TCP)
@@ -413,8 +414,8 @@ on_error:
 	pj_ioqueue_destroy(ioque);
     pj_pool_release(pool);
     return status;
-
 }
+
 
 /*
  * Compliance test for failed scenario.

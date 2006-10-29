@@ -9,6 +9,7 @@ MACRO		PJ_M_I386=1
 MACRO		PJ_SYMBIAN=1
 MACRO		PJ_IMPORTING
 
+OPTION		CW -lang c++
 
 // Test files
 
@@ -47,6 +48,7 @@ SOURCE	main_symbian.cpp
 
 
 SYSTEMINCLUDE	..\pjlib\include
+
 SYSTEMINCLUDE	\epoc32\include
 SYSTEMINCLUDE	\epoc32\include\libc
 //SYSTEMINCLUDE	\symbian\9.1\S60_3rd_MR\epoc32\include

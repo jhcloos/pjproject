@@ -92,7 +92,7 @@ PJ_DEF(pjmedia_sdp_attr*) pjmedia_sdp_attr_create( pj_pool_t *pool,
 
     PJ_ASSERT_RETURN(pool && name, NULL);
 
-    attr = pj_pool_alloc(pool, sizeof(pjmedia_sdp_attr));
+    attr = (pjmedia_sdp_attr*) pj_pool_alloc(pool, sizeof(pjmedia_sdp_attr));
     pj_strdup2(pool, &attr->name, name);
 
     if (value)
@@ -112,7 +112,7 @@ PJ_DEF(pjmedia_sdp_attr*) pjmedia_sdp_attr_clone(pj_pool_t *pool,
     
     PJ_ASSERT_RETURN(pool && rhs, NULL);
 
-    attr = pj_pool_alloc(pool, sizeof(pjmedia_sdp_attr));
+    attr = (pjmedia_sdp_attr*) pj_pool_alloc(pool, sizeof(pjmedia_sdp_attr));
 
     pj_strdup(pool, &attr->name, &rhs->name);
     pj_strdup(pool, &attr->value, &rhs->value);
@@ -364,7 +364,7 @@ PJ_DEF(pj_status_t) pjmedia_sdp_attr_to_rtpmap(pj_pool_t *pool,
 {
     PJ_ASSERT_RETURN(pool && attr && p_rtpmap, PJ_EINVAL);
 
-    *p_rtpmap = pj_pool_alloc(pool, sizeof(pjmedia_sdp_rtpmap));
+    *p_rtpmap = (pjmedia_sdp_rtpmap*) pj_pool_alloc(pool, sizeof(pjmedia_sdp_rtpmap));
     PJ_ASSERT_RETURN(*p_rtpmap, PJ_ENOMEM);
 
     return pjmedia_sdp_attr_get_rtpmap(attr, *p_rtpmap);
@@ -393,7 +393,7 @@ PJ_DEF(pj_status_t) pjmedia_sdp_rtpmap_to_attr(pj_pool_t *pool,
 	return PJMEDIA_SDP_ERTPMAPTOOLONG;
     }
 
-    attr = pj_pool_alloc(pool, sizeof(pjmedia_sdp_attr));
+    attr = (pjmedia_sdp_attr*) pj_pool_alloc(pool, sizeof(pjmedia_sdp_attr));
     PJ_ASSERT_RETURN(attr != NULL, PJ_ENOMEM);
 
     attr->name.ptr = "rtpmap";
@@ -430,7 +430,7 @@ PJ_DEF(pj_status_t) pjmedia_sdp_rtpmap_to_attr(pj_pool_t *pool,
     *p = '\0';
 
     attr->value.slen = p-tempbuf;
-    attr->value.ptr = pj_pool_alloc(pool, attr->value.slen);
+    attr->value.ptr = (char*)pj_pool_alloc(pool, attr->value.slen);
     pj_memcpy(attr->value.ptr, tempbuf, attr->value.slen);
 
     *p_attr = attr;
@@ -464,7 +464,7 @@ static int print_connection_info( pjmedia_sdp_conn *c, char *buf, int len)
 PJ_DEF(pjmedia_sdp_conn*) pjmedia_sdp_conn_clone (pj_pool_t *pool, 
 						  const pjmedia_sdp_conn *rhs)
 {
-    pjmedia_sdp_conn *c = pj_pool_alloc (pool, sizeof(pjmedia_sdp_conn));
+    pjmedia_sdp_conn *c = (pjmedia_sdp_conn*) pj_pool_alloc (pool, sizeof(pjmedia_sdp_conn));
     if (!c) return NULL;
 
     if (!pj_strdup (pool, &c->net_type, &rhs->net_type)) return NULL;
@@ -558,7 +558,7 @@ PJ_DEF(pjmedia_sdp_media*) pjmedia_sdp_media_clone(
 						 const pjmedia_sdp_media *rhs)
 {
     unsigned int i;
-    pjmedia_sdp_media *m = pj_pool_alloc (pool, sizeof(pjmedia_sdp_media));
+    pjmedia_sdp_media *m = (pjmedia_sdp_media*) pj_pool_alloc (pool, sizeof(pjmedia_sdp_media));
     PJ_ASSERT_RETURN(m != NULL, NULL);
 
     pj_strdup (pool, &m->desc.media, &rhs->desc.media);
@@ -895,7 +895,7 @@ static pjmedia_sdp_attr *parse_attr( pj_pool_t *pool, pj_scanner *scanner,
 
     ctx->last_error = PJMEDIA_SDP_EINATTR;
 
-    attr = pj_pool_alloc(pool, sizeof(pjmedia_sdp_attr));
+    attr = (pjmedia_sdp_attr*)pj_pool_alloc(pool, sizeof(pjmedia_sdp_attr));
 
     /* skip a= */
     pj_scan_advance_n(scanner, 2, SKIP_WS);
@@ -927,7 +927,7 @@ PJ_DEF(pj_status_t) pjmedia_sdp_parse( pj_pool_t *pool,
     pj_scanner scanner;
     pjmedia_sdp_session *session;
     pjmedia_sdp_media *media = NULL;
-    void *attr;
+    pjmedia_sdp_attr *attr;
     pjmedia_sdp_conn *conn;
     pj_str_t dummy;
     int cur_name = 254;
@@ -939,7 +939,7 @@ PJ_DEF(pj_status_t) pjmedia_sdp_parse( pj_pool_t *pool,
     init_sdp_parser();
 
     pj_scan_init(&scanner, buf, len, 0, &on_scanner_error);
-    session = pj_pool_calloc(pool, 1, sizeof(pjmedia_sdp_session));
+    session = (pjmedia_sdp_session*)pj_pool_calloc(pool, 1, sizeof(pjmedia_sdp_session));
     PJ_ASSERT_RETURN(session != NULL, PJ_ENOMEM);
 
     PJ_TRY {
@@ -963,7 +963,7 @@ PJ_DEF(pj_status_t) pjmedia_sdp_parse( pj_pool_t *pool,
 		    parse_generic_line(&scanner, &session->name, &ctx);
 		    break;
 		case 'c':
-		    conn = pj_pool_calloc(pool, 1, sizeof(*conn));
+		    conn = (pjmedia_sdp_conn*) pj_pool_calloc(pool, 1, sizeof(*conn));
 		    parse_connection_info(&scanner, conn, &ctx);
 		    if (media) {
 			media->conn = conn;
@@ -975,7 +975,7 @@ PJ_DEF(pj_status_t) pjmedia_sdp_parse( pj_pool_t *pool,
 		    parse_time(&scanner, session, &ctx);
 		    break;
 		case 'm':
-		    media = pj_pool_calloc(pool, 1, sizeof(*media));
+		    media = (pjmedia_sdp_media*) pj_pool_calloc(pool, 1, sizeof(*media));
 		    parse_media(&scanner, media, &ctx);
 		    session->media[ session->media_count++ ] = media;
 		    break;
@@ -991,7 +991,7 @@ PJ_DEF(pj_status_t) pjmedia_sdp_parse( pj_pool_t *pool,
 	ctx.last_error = PJ_SUCCESS;
 
     }
-    PJ_CATCH(SYNTAX_ERROR) {
+    PJ_CATCH_ANY {
 	
 	char errmsg[PJ_ERR_MSG_SIZE];
 	pj_strerror(ctx.last_error, errmsg, sizeof(errmsg));
@@ -1033,7 +1033,7 @@ pjmedia_sdp_session_clone( pj_pool_t *pool,
 
     PJ_ASSERT_RETURN(pool && rhs, NULL);
 
-    sess = pj_pool_zalloc(pool, sizeof(pjmedia_sdp_session));
+    sess = (pjmedia_sdp_session*)pj_pool_zalloc(pool, sizeof(pjmedia_sdp_session));
     PJ_ASSERT_RETURN(sess != NULL, NULL);
 
     /* Clone origin line. */

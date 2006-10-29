@@ -18,6 +18,7 @@
  */
 #include "test.h"
 #include <pj/os.h>
+#include <pj/pool.h>
 
 /**
  * \page page_pjlib_atomic_test Test: Atomic Variable

@@ -102,13 +102,19 @@
 #define __FD_SETSIZE		    PJ_IOQUEUE_MAX_HANDLES
  */
 
-#define NULL 0
+#ifndef NULL
+#   define NULL 0
+#endif
+
+
+/* Doesn't seem to allow more than this */
+#define PJ_IOQUEUE_MAX_HANDLES	    8
 
 /*
  * Override features.
  */
 #define PJ_HAS_FLOATING_POINT	    1
-#define PJ_HAS_MALLOC               1
+#define PJ_HAS_MALLOC               0
 #define PJ_HAS_SEMAPHORE	    1
 #define PJ_HAS_EVENT_OBJ	    0
 #define PJ_HAS_HIGH_RES_TIMER	    1

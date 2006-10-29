@@ -212,7 +212,7 @@ static pj_status_t respond_digest( pj_pool_t *pool,
     pj_strdup(pool, &cred->opaque, &chal->opaque);
     
     /* Allocate memory. */
-    cred->response.ptr = pj_pool_alloc(pool, PJSIP_MD5STRLEN);
+    cred->response.ptr = (char*)pj_pool_alloc(pool, PJSIP_MD5STRLEN);
     cred->response.slen = PJSIP_MD5STRLEN;
 
     if (chal->qop.slen == 0) {
@@ -227,7 +227,7 @@ static pj_status_t respond_digest( pj_pool_t *pool,
 	 * We respond with selecting "qop=auth" protection.
 	 */
 	cred->qop = pjsip_AUTH_STR;
-	cred->nc.ptr = pj_pool_alloc(pool, 16);
+	cred->nc.ptr = (char*)pj_pool_alloc(pool, 16);
 	pj_ansi_snprintf(cred->nc.ptr, 16, "%06u", nc);
 
 	if (cnonce && cnonce->slen) {
@@ -265,7 +265,8 @@ static void update_digest_session( pj_pool_t *ses_pool,
     /* Initialize cnonce and qop if not present. */
     if (cached_auth->cnonce.slen == 0) {
 	/* Save the whole challenge */
-	cached_auth->last_chal = pjsip_hdr_clone(ses_pool, hdr);
+	cached_auth->last_chal = (pjsip_www_authenticate_hdr*)
+				  pjsip_hdr_clone(ses_pool, hdr);
 
 	/* Create cnonce */
 	pj_create_unique_string( ses_pool, &cached_auth->cnonce );
@@ -365,7 +366,7 @@ PJ_DEF(pj_status_t) pjsip_auth_clt_clone( pj_pool_t *pool,
     sess->pool = pool;
     sess->endpt = (pjsip_endpoint*)rhs->endpt;
     sess->cred_cnt = rhs->cred_cnt;
-    sess->cred_info = pj_pool_alloc(pool, 
+    sess->cred_info = (pjsip_cred_info*) pj_pool_alloc(pool, 
 				    sess->cred_cnt*sizeof(pjsip_cred_info));
     for (i=0; i<rhs->cred_cnt; ++i) {
 	pj_strdup(pool, &sess->cred_info[i].realm, &rhs->cred_info[i].realm);
@@ -400,7 +401,8 @@ PJ_DEF(pj_status_t) pjsip_auth_clt_set_credentials( pjsip_auth_clt_sess *sess,
 	sess->cred_cnt = 0;
     } else {
 	int i;
-	sess->cred_info = pj_pool_alloc(sess->pool, cred_cnt * sizeof(*c));
+	sess->cred_info = (pjsip_cred_info*)
+			  pj_pool_alloc(sess->pool, cred_cnt * sizeof(*c));
 	for (i=0; i<cred_cnt; ++i) {
 	    sess->cred_info[i].data_type = c[i].data_type;
 	    pj_strdup(sess->pool, &sess->cred_info[i].scheme, &c[i].scheme);
@@ -526,7 +528,8 @@ static pj_status_t auth_respond( pj_pool_t *req_pool,
 	    if (cached_hdr != &cached_auth->cached_hdr) {
 		cached_hdr->hdr = hauth;
 	    } else {
-		cached_hdr = pj_pool_alloc(pool, sizeof(*cached_hdr));
+		cached_hdr = (pjsip_cached_auth_hdr*)
+			     pj_pool_alloc(pool, sizeof(*cached_hdr));
 		pjsip_method_copy( pool, &cached_hdr->method, method);
 		cached_hdr->hdr = hauth;
 		pj_list_insert_before( &cached_auth->cached_hdr, cached_hdr );
@@ -535,7 +538,8 @@ static pj_status_t auth_respond( pj_pool_t *req_pool,
 
 #	if defined(PJSIP_AUTH_AUTO_SEND_NEXT) && PJSIP_AUTH_AUTO_SEND_NEXT!=0
 	    if (hdr != cached_auth->last_chal) {
-		cached_auth->last_chal = pjsip_hdr_clone(sess_pool, hdr);
+		cached_auth->last_chal = (pjsip_www_authenticate_hdr*)
+					  pjsip_hdr_clone(sess_pool, hdr);
 	    }
 #	endif
     }
@@ -608,7 +612,8 @@ PJ_DEF(pj_status_t) pjsip_auth_clt_init_req( pjsip_auth_clt_sess *sess,
 		while (entry != &auth->cached_hdr) {
 		    if (pjsip_method_cmp(&entry->method, method)==0) {
 			pjsip_authorization_hdr *hauth;
-			hauth = pjsip_hdr_shallow_clone(tdata->pool, entry->hdr);
+			hauth=(pjsip_authorization_hdr*) 
+			      pjsip_hdr_shallow_clone(tdata->pool, entry->hdr);
 			pjsip_msg_add_hdr(tdata->msg, (pjsip_hdr*)hauth);
 		    } else {
 #			if defined(PJSIP_AUTH_AUTO_SEND_NEXT) && \
@@ -794,7 +799,8 @@ PJ_DEF(pj_status_t) pjsip_auth_clt_reinit_req(	pjsip_auth_clt_sess *sess,
 	 */
 	cached_auth = find_cached_auth(sess, &hchal->challenge.common.realm );
 	if (!cached_auth) {
-	    cached_auth = pj_pool_zalloc( sess->pool, sizeof(*cached_auth));
+	    cached_auth = (pjsip_cached_auth *)
+			  pj_pool_zalloc( sess->pool, sizeof(*cached_auth));
 	    pj_strdup( sess->pool, &cached_auth->realm, &hchal->challenge.common.realm);
 	    cached_auth->is_proxy = (hchal->type == PJSIP_H_PROXY_AUTHENTICATE);
 #	    if (PJSIP_AUTH_HEADER_CACHING)
@@ -822,7 +828,8 @@ PJ_DEF(pj_status_t) pjsip_auth_clt_reinit_req(	pjsip_auth_clt_sess *sess,
 
 
     /* Remove branch param in Via header. */
-    via = pjsip_msg_find_hdr(tdata->msg, PJSIP_H_VIA, NULL);
+    via = (pjsip_via_hdr*)
+	  pjsip_msg_find_hdr(tdata->msg, PJSIP_H_VIA, NULL);
     via->branch_param.slen = 0;
 
     /* Increment reference counter. */

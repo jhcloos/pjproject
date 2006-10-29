@@ -46,7 +46,8 @@ static pjsip_hdr_vptr authorization_hdr_vptr =
 
 PJ_DEF(pjsip_authorization_hdr*) pjsip_authorization_hdr_create(pj_pool_t *pool)
 {
-    pjsip_authorization_hdr *hdr = pj_pool_calloc(pool, 1, sizeof(*hdr));
+    pjsip_authorization_hdr *hdr = (pjsip_authorization_hdr *)
+				    pj_pool_calloc(pool, 1, sizeof(*hdr));
     init_hdr(hdr, PJSIP_H_AUTHORIZATION, &authorization_hdr_vptr);
     pj_list_init(&hdr->credential.common.other_param);
     return hdr;
@@ -54,7 +55,8 @@ PJ_DEF(pjsip_authorization_hdr*) pjsip_authorization_hdr_create(pj_pool_t *pool)
 
 PJ_DEF(pjsip_proxy_authorization_hdr*) pjsip_proxy_authorization_hdr_create(pj_pool_t *pool)
 {
-    pjsip_proxy_authorization_hdr *hdr = pj_pool_calloc(pool, 1, sizeof(*hdr));
+    pjsip_proxy_authorization_hdr *hdr = (pjsip_proxy_authorization_hdr *)
+					 pj_pool_calloc(pool, 1, sizeof(*hdr));
     init_hdr(hdr, PJSIP_H_PROXY_AUTHORIZATION, &authorization_hdr_vptr);
     pj_list_init(&hdr->credential.common.other_param);
     return hdr;
@@ -172,7 +174,8 @@ static pjsip_authorization_hdr* pjsip_authorization_hdr_shallow_clone( pj_pool_t
 								       const pjsip_authorization_hdr *rhs)
 {
     /* This function also serves Proxy-Authorization header. */
-    pjsip_authorization_hdr *hdr = pj_pool_alloc(pool, sizeof(*hdr));
+    pjsip_authorization_hdr *hdr = (pjsip_authorization_hdr *)
+				   pj_pool_alloc(pool, sizeof(*hdr));
     pj_memcpy(hdr, rhs, sizeof(*hdr));
     pjsip_param_shallow_clone(pool, &hdr->credential.common.other_param, 
 			      &rhs->credential.common.other_param);
@@ -201,7 +204,8 @@ static pjsip_hdr_vptr www_authenticate_hdr_vptr =
 
 PJ_DEF(pjsip_www_authenticate_hdr*) pjsip_www_authenticate_hdr_create(pj_pool_t *pool)
 {
-    pjsip_www_authenticate_hdr *hdr = pj_pool_calloc(pool, 1, sizeof(*hdr));
+    pjsip_www_authenticate_hdr *hdr = (pjsip_www_authenticate_hdr *) 
+				      pj_pool_calloc(pool, 1, sizeof(*hdr));
     init_hdr(hdr, PJSIP_H_WWW_AUTHENTICATE, &www_authenticate_hdr_vptr);
     pj_list_init(&hdr->challenge.common.other_param);
     return hdr;
@@ -210,7 +214,8 @@ PJ_DEF(pjsip_www_authenticate_hdr*) pjsip_www_authenticate_hdr_create(pj_pool_t 
 
 PJ_DEF(pjsip_proxy_authenticate_hdr*) pjsip_proxy_authenticate_hdr_create(pj_pool_t *pool)
 {
-    pjsip_proxy_authenticate_hdr *hdr = pj_pool_calloc(pool, 1, sizeof(*hdr));
+    pjsip_proxy_authenticate_hdr *hdr = (pjsip_proxy_authenticate_hdr *)
+				         pj_pool_calloc(pool, 1, sizeof(*hdr));
     init_hdr(hdr, PJSIP_H_PROXY_AUTHENTICATE, &www_authenticate_hdr_vptr);
     pj_list_init(&hdr->challenge.common.other_param);
     return hdr;
@@ -322,7 +327,8 @@ static pjsip_www_authenticate_hdr* pjsip_www_authenticate_hdr_shallow_clone( pj_
 									     const pjsip_www_authenticate_hdr *rhs)
 {
     /* This function also serves Proxy-Authenticate header. */
-    pjsip_www_authenticate_hdr *hdr = pj_pool_alloc(pool, sizeof(*hdr));
+    pjsip_www_authenticate_hdr *hdr = (pjsip_www_authenticate_hdr *) 
+				       pj_pool_alloc(pool, sizeof(*hdr));
     pj_memcpy(hdr, rhs, sizeof(*hdr));
     pjsip_param_shallow_clone(pool, &hdr->challenge.common.other_param, 
 			      &rhs->challenge.common.other_param);

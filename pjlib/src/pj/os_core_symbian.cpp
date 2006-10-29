@@ -46,6 +46,14 @@ struct pj_thread_t
     char	    obj_name[PJ_MAX_OBJ_NAME];
     void	   *tls_values[PJ_MAX_TLS];
 
+#if defined(PJ_OS_HAS_CHECK_STACK) && PJ_OS_HAS_CHECK_STACK!=0
+    pj_uint32_t	    stk_size;
+    pj_uint32_t	    stk_max_usage;
+    char	   *stk_start;
+    const char	   *caller_file;
+    int		    caller_line;
+#endif
+
 } main_thread;
 
 struct pj_atomic_t
@@ -53,6 +61,11 @@ struct pj_atomic_t
     pj_atomic_value_t	value;
 };
 
+struct pj_sem_t
+{
+    int value;
+    int max;
+};
 
 /* Flags to indicate which TLS variables have been used */
 static int tls_vars[PJ_MAX_TLS];
@@ -66,7 +79,7 @@ static int tls_vars[PJ_MAX_TLS];
 //
 
 CPjTimeoutTimer::CPjTimeoutTimer()
-: CActive(EPriorityNormal), hasTimedOut_(false)
+: CActive(EPriorityNormal), hasTimedOut_(PJ_FALSE)
 {
 }
 
@@ -79,13 +92,14 @@ CPjTimeoutTimer::~CPjTimeoutTimer()
 
 void CPjTimeoutTimer::ConstructL()
 {
+    hasTimedOut_ = PJ_FALSE;
     timer_.CreateLocal();
     CActiveScheduler::Add(this);
 }
 
 CPjTimeoutTimer *CPjTimeoutTimer::NewL()
 {
-    CPjTimeoutTimer *self = new (ELeave) CPjTimeoutTimer;
+    CPjTimeoutTimer *self = new CPjTimeoutTimer;
     CleanupStack::PushL(self);
 
     self->ConstructL();
@@ -100,19 +114,21 @@ void CPjTimeoutTimer::StartTimer(TUint miliSeconds)
     if (IsActive())
 	Cancel();
 
-    hasTimedOut_ = false;
+    hasTimedOut_ = PJ_FALSE;
     timer_.After(iStatus, miliSeconds * 1000);
     SetActive();
+
+    pj_assert(iStatus==KRequestPending);
 }
 
 bool CPjTimeoutTimer::HasTimedOut() const
 {
-    return hasTimedOut_;
+    return hasTimedOut_ != 0;
 }
 
 void CPjTimeoutTimer::RunL()
 {
-    hasTimedOut_ = true;
+    hasTimedOut_ = PJ_TRUE;
 }
 
 void CPjTimeoutTimer::DoCancel()
@@ -252,6 +268,9 @@ PJ_DEF(pj_status_t) pj_init(void)
 {
     pj_ansi_strcpy(main_thread.obj_name, "pjthread");
 
+    // Init main thread
+    pj_memset(&main_thread, 0, sizeof(main_thread));
+
     // Initialize PjSymbianOS instance
     PjSymbianOS *os = PjSymbianOS::Instance();
 
@@ -364,7 +383,13 @@ PJ_DEF(pj_status_t) pj_thread_destroy(pj_thread_t *rec)
  */
 PJ_DEF(pj_status_t) pj_thread_sleep(unsigned msec)
 {
+    //Not a good idea, as we don't want network events to
+    //arrive while we're not polling them:
+    //PjSymbianOS::Instance()->WaitForActiveObjects();
+
+    //.. so rather use this, which won't wake up Active Objects:
     User::After(msec*1000);
+
     return PJ_SUCCESS;
 }
 
@@ -641,16 +666,19 @@ PJ_DEF(pj_status_t) pj_sem_create( pj_pool_t *pool,
                                    const char *name,
 				   unsigned initial, 
                                    unsigned max,
-				   pj_sem_t **sem)
+				   pj_sem_t **p_sem)
 {
-    PJ_UNUSED_ARG(pool);
+    pj_sem_t *sem;
+ 
     PJ_UNUSED_ARG(name);
-    PJ_UNUSED_ARG(initial);
-    PJ_UNUSED_ARG(max);
-    PJ_UNUSED_ARG(sem);
 
-    /* Unsupported */
-    return PJ_ENOTSUP;
+    sem = (pj_sem_t*) pj_pool_zalloc(pool, sizeof(pj_sem_t));
+    sem->value = initial;
+    sem->max = max;
+
+    *p_sem = sem;
+
+    return PJ_SUCCESS;
 }
 
 
@@ -659,8 +687,13 @@ PJ_DEF(pj_status_t) pj_sem_create( pj_pool_t *pool,
  */
 PJ_DEF(pj_status_t) pj_sem_wait(pj_sem_t *sem)
 {
-    PJ_UNUSED_ARG(sem);
-    return PJ_EINVALIDOP;
+    if (sem->value > 0) {
+	sem->value--;
+	return PJ_SUCCESS;
+    } else {
+	pj_assert(!"Unexpected!");
+	return PJ_EINVALIDOP;
+    }
 }
 
 
@@ -669,8 +702,13 @@ PJ_DEF(pj_status_t) pj_sem_wait(pj_sem_t *sem)
  */
 PJ_DEF(pj_status_t) pj_sem_trywait(pj_sem_t *sem)
 {
-    PJ_UNUSED_ARG(sem);
-    return PJ_EINVALIDOP;
+    if (sem->value > 0) {
+	sem->value--;
+	return PJ_SUCCESS;
+    } else {
+	pj_assert(!"Unexpected!");
+	return PJ_EINVALIDOP;
+    }
 }
 
 
@@ -679,8 +717,8 @@ PJ_DEF(pj_status_t) pj_sem_trywait(pj_sem_t *sem)
  */
 PJ_DEF(pj_status_t) pj_sem_post(pj_sem_t *sem)
 {
-    PJ_UNUSED_ARG(sem);
-    return PJ_EINVALIDOP;
+    sem->value++;
+    return PJ_SUCCESS;
 }
 
 
@@ -690,7 +728,57 @@ PJ_DEF(pj_status_t) pj_sem_post(pj_sem_t *sem)
 PJ_DEF(pj_status_t) pj_sem_destroy(pj_sem_t *sem)
 {
     PJ_UNUSED_ARG(sem);
-    return PJ_EINVALIDOP;
+    return PJ_SUCCESS;
 }
 
 
+#if defined(PJ_OS_HAS_CHECK_STACK) && PJ_OS_HAS_CHECK_STACK != 0
+/*
+ * The implementation of stack checking. 
+ */
+PJ_DEF(void) pj_thread_check_stack(const char *file, int line)
+{
+    char stk_ptr;
+    pj_uint32_t usage;
+    pj_thread_t *thread = pj_thread_this();
+
+    pj_assert(thread);
+
+    /* Calculate current usage. */
+    usage = (&stk_ptr > thread->stk_start) ? &stk_ptr - thread->stk_start :
+		thread->stk_start - &stk_ptr;
+
+    /* Assert if stack usage is dangerously high. */
+    pj_assert("STACK OVERFLOW!! " && (usage <= thread->stk_size - 128));
+
+    /* Keep statistic. */
+    if (usage > thread->stk_max_usage) {
+	thread->stk_max_usage = usage;
+	thread->caller_file = file;
+	thread->caller_line = line;
+    }
+}
+
+/*
+ * Get maximum stack usage statistic. 
+ */
+PJ_DEF(pj_uint32_t) pj_thread_get_stack_max_usage(pj_thread_t *thread)
+{
+    return thread->stk_max_usage;
+}
+
+/*
+ * Dump thread stack status. 
+ */
+PJ_DEF(pj_status_t) pj_thread_get_stack_info(pj_thread_t *thread,
+					     const char **file,
+					     int *line)
+{
+    pj_assert(thread);
+
+    *file = thread->caller_file;
+    *line = thread->caller_line;
+    return 0;
+}
+
+#endif	/* PJ_OS_HAS_CHECK_STACK */

@@ -139,11 +139,6 @@ typedef pjsip_module pjsip_user_agent;
 typedef struct pjsip_dialog pjsip_dialog;
 
 /**
- * Dialog state (sip_dialog.h).
- */
-typedef enum pjsip_dialog_state pjsip_dialog_state;
-
-/**
  * Transaction role.
  */
 typedef enum pjsip_role_e

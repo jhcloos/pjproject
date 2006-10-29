@@ -18,8 +18,10 @@
  */
 #include <pj/errno.h>
 #include <pj/ioqueue.h>
+#include <pj/os.h>
 #include <pj/pool.h>
 #include <pj/sock.h>
+#include <pj/string.h>
 #include "test.h"
 
 static pj_ioqueue_key_t *key;

@@ -116,8 +116,11 @@ PJ_DEF(void) pj_set_netos_error(pj_status_t code)
     PJ_UNUSED_ARG(code);
 }
 
-extern "C" int platform_strerror( pj_os_err_type os_errcode, 
-                       		  char *buf, pj_size_t bufsize);
+extern "C" 
+{
+    PJ_DECL(int) platform_strerror( pj_os_err_type os_errcode, 
+                       		    char *buf, pj_size_t bufsize);
+}
 
 /* 
  * platform_strerror()
@@ -125,8 +128,8 @@ extern "C" int platform_strerror( pj_os_err_type os_errcode,
  * Platform specific error message. This file is called by pj_strerror() 
  * in errno.c 
  */
-int platform_strerror( pj_os_err_type os_errcode, 
-                       char *buf, pj_size_t bufsize)
+PJ_DEF(int) platform_strerror( pj_os_err_type os_errcode, 
+			       char *buf, pj_size_t bufsize)
 {
     int len = 0;
 

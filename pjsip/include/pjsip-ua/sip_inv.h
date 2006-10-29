@@ -26,14 +26,13 @@
 PJ_BEGIN_DECL
 
 
-typedef enum pjsip_inv_state pjsip_inv_state;
 typedef struct pjsip_inv_session pjsip_inv_session;
 typedef struct pjsip_inv_callback pjsip_inv_callback;
 
 /**
  * This enumeration describes invite session state.
  */
-enum pjsip_inv_state
+typedef enum pjsip_inv_state
 {
     PJSIP_INV_STATE_NULL,	    /**< Before INVITE is sent or received  */
     PJSIP_INV_STATE_CALLING,	    /**< After INVITE is sent		    */
@@ -42,7 +41,7 @@ enum pjsip_inv_state
     PJSIP_INV_STATE_CONNECTING,	    /**< After 2xx is sent/received.	    */
     PJSIP_INV_STATE_CONFIRMED,	    /**< After ACK is sent/received.	    */
     PJSIP_INV_STATE_DISCONNECTED,   /**< Session is terminated.		    */
-};
+} pjsip_inv_state;
 
 /**
  * This structure contains callbacks to be registered by application to 

@@ -44,39 +44,18 @@ struct pj_ioqueue_t
 class CIoqueueCallback : public CActive
 {
 public:
-    CIoqueueCallback(pj_ioqueue_t *ioqueue,
-		     pj_ioqueue_key_t *key, pj_sock_t sock, 
-		     const pj_ioqueue_callback *cb, void *user_data)
-    : CActive(CActive::EPriorityStandard),
-	  ioqueue_(ioqueue), key_(key), sock_((CPjSocket*)sock), cb_(cb), 
-	  user_data_(user_data), aBufferPtr_(NULL, 0), type_(TYPE_NONE)
-    {
-	CActiveScheduler::Add(this);
-    }
+    static CIoqueueCallback* NewL(pj_ioqueue_t *ioqueue,
+				  pj_ioqueue_key_t *key, 
+				  pj_sock_t sock, 
+				  const pj_ioqueue_callback *cb, 
+				  void *user_data);
 
     //
     // Start asynchronous recv() operation
     //
     pj_status_t StartRead(pj_ioqueue_op_key_t *op_key, 
 			  void *buf, pj_ssize_t *size, unsigned flags,
-			  pj_sockaddr_t *addr, int *addrlen)
-    {
-	PJ_ASSERT_RETURN(IsActive()==false, PJ_EBUSY);
-	PJ_ASSERT_RETURN(pending_data_.common_.op_key_==NULL, PJ_EBUSY);
-
-	pending_data_.read_.op_key_ = op_key;
-	pending_data_.read_.addr_ = addr;
-	pending_data_.read_.addrlen_ = addrlen;
-
-	aBufferPtr_.Set((TUint8*)buf, 0, (TInt)*size);
-
-	type_ = TYPE_READ;
-	SetActive();
-	sock_->Socket().RecvFrom(aBufferPtr_, aAddress_, flags, iStatus);
-
-	return PJ_EPENDING;
-    }
-
+			  pj_sockaddr_t *addr, int *addrlen);
 
     //
     // Start asynchronous accept() operation.
@@ -85,144 +64,23 @@ public:
 			    pj_sock_t *new_sock,
 			    pj_sockaddr_t *local,
 			    pj_sockaddr_t *remote,
-			    int *addrlen )
-    {
-	PJ_ASSERT_RETURN(IsActive()==false, PJ_EBUSY);
-	PJ_ASSERT_RETURN(pending_data_.common_.op_key_==NULL, PJ_EBUSY);
-
-	pending_data_.accept_.op_key_ = op_key;
-	pending_data_.accept_.new_sock_ = new_sock;
-	pending_data_.accept_.local_ = local;
-	pending_data_.accept_.remote_ = remote;
-	pending_data_.accept_.addrlen_ = addrlen;
-
-	// Create blank socket
-	blank_sock_.Open(PjSymbianOS::Instance()->SocketServ());
-
-	type_ = TYPE_ACCEPT;
-	SetActive();
-	sock_->Socket().Accept(blank_sock_, iStatus);
-
-	return PJ_EPENDING;
-    }
-
+			    int *addrlen );
 
     //
     // Completion callback.
     //
-    void RunL()
-    {
-	Type cur_type = type_;
-
-	type_ = TYPE_NONE;
-
-	if (cur_type == TYPE_READ) {
-	    //
-	    // Completion of asynchronous RecvFrom()
-	    //
-
-	    /* Clear op_key (save it to temp variable first!) */
-	    pj_ioqueue_op_key_t	*op_key = pending_data_.read_.op_key_;
-	    pending_data_.read_.op_key_ = NULL;
-
-	    // Handle failure condition
-	    if (iStatus != KErrNone) {
-		cb_->on_read_complete(key_, op_key, -PJ_RETURN_OS_ERROR(iStatus.Int()));
-		return;
-	    }
-
-	    if (pending_data_.read_.addr_) {
-		PjSymbianOS::Addr2pj(aAddress_, 
-				     *(pj_sockaddr_in*)pending_data_.read_.addr_);
-		pending_data_.read_.addr_ = NULL;
-	    }
-	    if (pending_data_.read_.addrlen_) {
-		*pending_data_.read_.addrlen_ = sizeof(pj_sockaddr_in);
-		pending_data_.read_.addrlen_ = NULL;
-	    }
-
-	    /* Call callback */
-	    cb_->on_read_complete(key_, op_key, aBufferPtr_.Length());
-
-	} else if (cur_type == TYPE_ACCEPT) {
-	    //
-	    // Completion of asynchronous Accept()
-	    //
-	    
-	    /* Clear op_key (save it to temp variable first!) */
-	    pj_ioqueue_op_key_t	*op_key = pending_data_.read_.op_key_;
-	    pending_data_.read_.op_key_ = NULL;
-
-	    // Handle failure condition
-	    if (iStatus != KErrNone) {
-		if (pending_data_.accept_.new_sock_)
-		    *pending_data_.accept_.new_sock_ = PJ_INVALID_SOCKET;
-
-		cb_->on_accept_complete(key_, op_key, PJ_INVALID_SOCKET,
-					-PJ_RETURN_OS_ERROR(iStatus.Int()));
-		return;
-	    }
-
-	    CPjSocket *pjNewSock = new CPjSocket(blank_sock_);
-
-	    if (pending_data_.accept_.new_sock_) {
-		*pending_data_.accept_.new_sock_ = (pj_sock_t)pjNewSock;
-		pending_data_.accept_.new_sock_ = NULL;
-	    }
-
-	    if (pending_data_.accept_.local_) {
-		TInetAddr aAddr;
-		blank_sock_.LocalName(aAddr);
-		PjSymbianOS::Addr2pj(aAddr, *(pj_sockaddr_in*)pending_data_.accept_.local_);
-		pending_data_.accept_.local_ = NULL;
-	    }
-
-	    if (pending_data_.accept_.remote_) {
-		TInetAddr aAddr;
-		blank_sock_.RemoteName(aAddr);
-		PjSymbianOS::Addr2pj(aAddr, *(pj_sockaddr_in*)pending_data_.accept_.remote_);
-		pending_data_.accept_.remote_ = NULL;
-	    }
-
-	    if (pending_data_.accept_.addrlen_) {
-		*pending_data_.accept_.addrlen_ = sizeof(pj_sockaddr_in);
-		pending_data_.accept_.addrlen_ = NULL;
-	    }
-
-	    // Call callback.
-	    cb_->on_accept_complete(key_, op_key, (pj_sock_t)pjNewSock, PJ_SUCCESS);
-	}
-
-	ioqueue_->eventCount++;
-    }
+    void RunL();
 
     //
     // CActive's DoCancel()
     //
-    void DoCancel()
-    {
-	if (type_ == TYPE_READ)
-	    sock_->Socket().CancelRecv();
-	else if (type_ == TYPE_ACCEPT)
-	    sock_->Socket().CancelAccept();
-
-	type_ = TYPE_NONE;
-    }
+    void DoCancel();
 
     //
     // Cancel operation and call callback.
     //
-    void CancelOperation(pj_ioqueue_op_key_t *op_key, pj_ssize_t bytes_status)
-    {
-	Type cur_type = type_;
-
-	Cancel();
-
-	if (cur_type == TYPE_READ)
-	    cb_->on_read_complete(key_, op_key, bytes_status);
-	else if (cur_type == TYPE_ACCEPT)
-	    ;
-    }
+    void CancelOperation(pj_ioqueue_op_key_t *op_key, 
+			 pj_ssize_t bytes_status);
 
     //
     // Accessors
@@ -292,11 +150,238 @@ private:
 
     union Pending_Data		 pending_data_;
     RSocket			blank_sock_;
+
+    CIoqueueCallback(pj_ioqueue_t *ioqueue,
+		     pj_ioqueue_key_t *key, pj_sock_t sock, 
+		     const pj_ioqueue_callback *cb, void *user_data)
+    : CActive(CActive::EPriorityStandard),
+	  ioqueue_(ioqueue), key_(key), sock_((CPjSocket*)sock), cb_(cb), 
+	  user_data_(user_data), aBufferPtr_(NULL, 0), type_(TYPE_NONE)
+    {
+    }
+
+
+    void ConstructL()
+    {
+	CActiveScheduler::Add(this);
+    }
 };
 
 
+CIoqueueCallback* CIoqueueCallback::NewL(pj_ioqueue_t *ioqueue,
+					 pj_ioqueue_key_t *key, 
+					 pj_sock_t sock, 
+					 const pj_ioqueue_callback *cb, 
+					 void *user_data)
+{
+    CIoqueueCallback *self = new CIoqueueCallback(ioqueue, key, sock, 
+						  cb, user_data);
+    CleanupStack::PushL(self);
+    self->ConstructL();
+    CleanupStack::Pop(self);
+
+    return self;
+}
 
 
+//
+// Start asynchronous recv() operation
+//
+pj_status_t CIoqueueCallback::StartRead(pj_ioqueue_op_key_t *op_key, 
+					void *buf, pj_ssize_t *size, 
+					unsigned flags,
+					pj_sockaddr_t *addr, int *addrlen)
+{
+    PJ_ASSERT_RETURN(IsActive()==false, PJ_EBUSY);
+    PJ_ASSERT_RETURN(pending_data_.common_.op_key_==NULL, PJ_EBUSY);
+
+    flags &= ~PJ_IOQUEUE_ALWAYS_ASYNC;
+
+    pending_data_.read_.op_key_ = op_key;
+    pending_data_.read_.addr_ = addr;
+    pending_data_.read_.addrlen_ = addrlen;
+
+    aBufferPtr_.Set((TUint8*)buf, 0, (TInt)*size);
+
+    type_ = TYPE_READ;
+    if (addr && addrlen) {
+	sock_->Socket().RecvFrom(aBufferPtr_, aAddress_, flags, iStatus);
+    } else {
+	aAddress_.SetAddress(0);
+	aAddress_.SetPort(0);
+	sock_->Socket().Recv(aBufferPtr_, flags, iStatus);
+    }
+
+    if (iStatus==KRequestPending) {
+	SetActive();
+	return PJ_EPENDING;
+    } else {
+	return PJ_RETURN_OS_ERROR(iStatus.Int());
+    }
+}
+
+
+//
+// Start asynchronous accept() operation.
+//
+pj_status_t CIoqueueCallback::StartAccept(pj_ioqueue_op_key_t *op_key,
+					  pj_sock_t *new_sock,
+					  pj_sockaddr_t *local,
+					  pj_sockaddr_t *remote,
+					  int *addrlen )
+{
+    PJ_ASSERT_RETURN(IsActive()==false, PJ_EBUSY);
+    PJ_ASSERT_RETURN(pending_data_.common_.op_key_==NULL, PJ_EBUSY);
+
+    pending_data_.accept_.op_key_ = op_key;
+    pending_data_.accept_.new_sock_ = new_sock;
+    pending_data_.accept_.local_ = local;
+    pending_data_.accept_.remote_ = remote;
+    pending_data_.accept_.addrlen_ = addrlen;
+
+    // Create blank socket
+    blank_sock_.Open(PjSymbianOS::Instance()->SocketServ());
+
+    type_ = TYPE_ACCEPT;
+    sock_->Socket().Accept(blank_sock_, iStatus);
+
+    if (iStatus==KRequestPending) {
+	SetActive();
+	return PJ_EPENDING;
+    } else {
+	return PJ_RETURN_OS_ERROR(iStatus.Int());
+    }
+}
+
+
+//
+// Completion callback.
+//
+void CIoqueueCallback::RunL()
+{
+    Type cur_type = type_;
+
+    type_ = TYPE_NONE;
+
+    if (cur_type == TYPE_READ) {
+	//
+	// Completion of asynchronous RecvFrom()
+	//
+
+	/* Clear op_key (save it to temp variable first!) */
+	pj_ioqueue_op_key_t	*op_key = pending_data_.read_.op_key_;
+	pending_data_.read_.op_key_ = NULL;
+
+	// Handle failure condition
+	if (iStatus != KErrNone) {
+	    cb_->on_read_complete(key_, op_key, 
+				  -PJ_RETURN_OS_ERROR(iStatus.Int()));
+	    return;
+	}
+
+	if (pending_data_.read_.addr_) {
+	    PjSymbianOS::Addr2pj(aAddress_, 
+				 *(pj_sockaddr_in*)pending_data_.read_.addr_);
+	    pending_data_.read_.addr_ = NULL;
+	}
+	if (pending_data_.read_.addrlen_) {
+	    *pending_data_.read_.addrlen_ = sizeof(pj_sockaddr_in);
+	    pending_data_.read_.addrlen_ = NULL;
+	}
+
+	/* Call callback */
+	cb_->on_read_complete(key_, op_key, aBufferPtr_.Length());
+
+    } else if (cur_type == TYPE_ACCEPT) {
+	//
+	// Completion of asynchronous Accept()
+	//
+	
+	/* Clear op_key (save it to temp variable first!) */
+	pj_ioqueue_op_key_t	*op_key = pending_data_.read_.op_key_;
+	pending_data_.read_.op_key_ = NULL;
+
+	// Handle failure condition
+	if (iStatus != KErrNone) {
+	    if (pending_data_.accept_.new_sock_)
+		*pending_data_.accept_.new_sock_ = PJ_INVALID_SOCKET;
+
+	    cb_->on_accept_complete(key_, op_key, PJ_INVALID_SOCKET,
+				    -PJ_RETURN_OS_ERROR(iStatus.Int()));
+	    return;
+	}
+
+	CPjSocket *pjNewSock = new CPjSocket(blank_sock_);
+
+	if (pending_data_.accept_.new_sock_) {
+	    *pending_data_.accept_.new_sock_ = (pj_sock_t)pjNewSock;
+	    pending_data_.accept_.new_sock_ = NULL;
+	}
+
+	if (pending_data_.accept_.local_) {
+	    TInetAddr aAddr;
+	    pj_sockaddr_in *ptr_sockaddr;
+
+	    blank_sock_.LocalName(aAddr);
+	    ptr_sockaddr = (pj_sockaddr_in*)pending_data_.accept_.local_;
+	    PjSymbianOS::Addr2pj(aAddr, *ptr_sockaddr);
+	    pending_data_.accept_.local_ = NULL;
+	}
+
+	if (pending_data_.accept_.remote_) {
+	    TInetAddr aAddr;
+	    pj_sockaddr_in *ptr_sockaddr;
+
+	    blank_sock_.RemoteName(aAddr);
+	    ptr_sockaddr = (pj_sockaddr_in*)pending_data_.accept_.remote_;
+	    PjSymbianOS::Addr2pj(aAddr, *ptr_sockaddr);
+	    pending_data_.accept_.remote_ = NULL;
+	}
+
+	if (pending_data_.accept_.addrlen_) {
+	    *pending_data_.accept_.addrlen_ = sizeof(pj_sockaddr_in);
+	    pending_data_.accept_.addrlen_ = NULL;
+	}
+
+	// Call callback.
+	cb_->on_accept_complete(key_, op_key, (pj_sock_t)pjNewSock, 
+				PJ_SUCCESS);
+    }
+
+    ioqueue_->eventCount++;
+}
+
+//
+// CActive's DoCancel()
+//
+void CIoqueueCallback::DoCancel()
+{
+    if (type_ == TYPE_READ)
+	sock_->Socket().CancelRecv();
+    else if (type_ == TYPE_ACCEPT)
+	sock_->Socket().CancelAccept();
+
+    type_ = TYPE_NONE;
+}
+
+//
+// Cancel operation and call callback.
+//
+void CIoqueueCallback::CancelOperation(pj_ioqueue_op_key_t *op_key, 
+				       pj_ssize_t bytes_status)
+{
+    Type cur_type = type_;
+
+    Cancel();
+
+    if (cur_type == TYPE_READ)
+	cb_->on_read_complete(key_, op_key, bytes_status);
+    else if (cur_type == TYPE_ACCEPT)
+	;
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
 /*
  * IO Queue key structure.
  */
@@ -375,8 +460,8 @@ PJ_DEF(pj_status_t) pj_ioqueue_register_sock( pj_pool_t *pool,
 {
     pj_ioqueue_key_t *key;
 
-    key = (pj_ioqueue_key_t*) pj_pool_alloc(pool, sizeof(pj_ioqueue_key_t));
-    key->cbObj = new CIoqueueCallback(ioq, key, sock, cb, user_data);
+    key = (pj_ioqueue_key_t*) pj_pool_zalloc(pool, sizeof(pj_ioqueue_key_t));
+    key->cbObj = CIoqueueCallback::NewL(ioq, key, sock, cb, user_data);
 
     *p_key = key;
     return PJ_SUCCESS;
@@ -390,13 +475,20 @@ PJ_DEF(pj_status_t) pj_ioqueue_unregister( pj_ioqueue_key_t *key )
     if (key == NULL || key->cbObj == NULL)
 	return PJ_SUCCESS;
 
+    // Cancel pending async object
+    if (key->cbObj && key->cbObj->IsActive()) {
+	key->cbObj->Cancel();
+    }
+
     // Close socket.
     key->cbObj->get_pj_socket()->Socket().Close();
     delete key->cbObj->get_pj_socket();
 
-    // Delete async object
-    delete key->cbObj;
-    key->cbObj = NULL;
+    // Delete async object.
+    if (key->cbObj) {
+	delete key->cbObj;
+	key->cbObj = NULL;
+    }
 
     return PJ_SUCCESS;
 }
@@ -518,7 +610,8 @@ PJ_DEF(int) pj_ioqueue_poll( pj_ioqueue_t *ioq,
     CPjTimeoutTimer *timer;
 
     if (timeout) {
-	if (!ioq->timeoutTimer->IsActive())
+	//if (!ioq->timeoutTimer->IsActive())
+	if (0)
 	    timer = ioq->timeoutTimer;
 	else
 	    timer = CPjTimeoutTimer::NewL();
@@ -533,12 +626,12 @@ PJ_DEF(int) pj_ioqueue_poll( pj_ioqueue_t *ioq,
 
     do {
 	PjSymbianOS::Instance()->WaitForActiveObjects();
-    } while (ioq->eventCount == 0 && !timer->HasTimedOut());
+    } while (ioq->eventCount == 0 && (!timer || (timer && !timer->HasTimedOut())));
 
-    if (!timer->HasTimedOut())
+    if (timer && !timer->HasTimedOut())
 	timer->Cancel();
 
-    if (timer != ioq->timeoutTimer)
+    if (timer && timer != ioq->timeoutTimer)
 	delete timer;
 
     return ioq->eventCount;
@@ -554,7 +647,9 @@ PJ_DEF(pj_status_t) pj_ioqueue_recv( pj_ioqueue_key_t *key,
 				     pj_ssize_t *length,
 				     pj_uint32_t flags )
 {
-    return pj_ioqueue_recvfrom(key, op_key, buffer, length, flags, NULL, NULL);
+    // Clear flag
+    flags &= ~PJ_IOQUEUE_ALWAYS_ASYNC;
+    return key->cbObj->StartRead(op_key, buffer, length, flags, NULL, NULL);
 }
 
 
@@ -574,6 +669,8 @@ PJ_DEF(pj_status_t) pj_ioqueue_recvfrom( pj_ioqueue_key_t *key,
     if (key->cbObj->IsActive())
 	return PJ_EBUSY;
 
+    // Clear flag
+    flags &= ~PJ_IOQUEUE_ALWAYS_ASYNC;
     return key->cbObj->StartRead(op_key, buffer, length, flags, addr, addrlen);
 }
 
@@ -596,13 +693,18 @@ PJ_DEF(pj_status_t) pj_ioqueue_send( pj_ioqueue_key_t *key,
     // Forcing pending operation is not supported.
     PJ_ASSERT_RETURN((flags & PJ_IOQUEUE_ALWAYS_ASYNC)==0, PJ_EINVAL);
 
+    // Clear flag
+    flags &= ~PJ_IOQUEUE_ALWAYS_ASYNC;
+
     key->cbObj->get_pj_socket()->Socket().Send(aBuffer, flags, reqStatus, aLen);
     User::WaitForRequest(reqStatus);
 
     if (reqStatus.Int() != KErrNone)
 	return PJ_RETURN_OS_ERROR(reqStatus.Int());
 
-    *length = aLen.Length();
+    //At least in UIQ Emulator, aLen.Length() reports incorrect length
+    //for UDP (some newlc.com users seem to have reported this too).
+    //*length = aLen.Length();
     return PJ_SUCCESS;
 }
 
@@ -631,17 +733,22 @@ PJ_DEF(pj_status_t) pj_ioqueue_sendto( pj_ioqueue_key_t *key,
     // Must be pj_sockaddr_in for now.
     PJ_ASSERT_RETURN(addrlen == sizeof(pj_sockaddr_in), PJ_EINVAL);
 
+    // Clear flag
+    flags &= ~PJ_IOQUEUE_ALWAYS_ASYNC;
+
     aBuffer.Set((const TUint8*)data, (TInt)*length);
     PjSymbianOS::pj2Addr(*(const pj_sockaddr_in*)addr, inetAddr);
     CPjSocket *pjSock = key->cbObj->get_pj_socket();
 
-    pjSock->Socket().Send(aBuffer, flags, reqStatus, aLen);
+    pjSock->Socket().SendTo(aBuffer, inetAddr, flags, reqStatus, aLen);
     User::WaitForRequest(reqStatus);
 
     if (reqStatus.Int() != KErrNone)
 	return PJ_RETURN_OS_ERROR(reqStatus.Int());
 
-    *length = aLen.Length();
+    //At least in UIQ Emulator, aLen.Length() reports incorrect length
+    //for UDP (some newlc.com users seem to have reported this too).
+    //*length = aLen.Length();
     return PJ_SUCCESS;
 }
 

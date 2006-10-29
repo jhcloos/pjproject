@@ -279,7 +279,7 @@ static pj_status_t create_tsx_key_2543( pj_pool_t *pool,
 		   host->slen +		    /* Via host. */
 		   9 +			    /* Via port. */
 		   16;			    /* Separator+Allowance. */
-    key = p = pj_pool_alloc(pool, len_required);
+    key = p = (char*) pj_pool_alloc(pool, len_required);
     end = p + len_required;
 
     /* Add role. */
@@ -346,7 +346,8 @@ static pj_status_t create_tsx_key_3261( pj_pool_t *pool,
 
     PJ_ASSERT_RETURN(pool && key && method && branch, PJ_EINVAL);
 
-    p = key->ptr = pj_pool_alloc(pool, branch->slen + method->name.slen + 4 );
+    p = key->ptr = (char*) 
+		   pj_pool_alloc(pool, branch->slen + method->name.slen + 4 );
     
     /* Add role. */
     *p++ = (char)(role==PJSIP_ROLE_UAC ? 'c' : 's');
@@ -580,7 +581,8 @@ PJ_DEF(pjsip_transaction*) pjsip_tsx_layer_find_tsx( const pj_str_t *key,
     pj_uint32_t hval = 0;
 
     pj_mutex_lock(mod_tsx_layer.mutex);
-    tsx = pj_hash_get( mod_tsx_layer.htable, key->ptr, key->slen, &hval );
+    tsx = (pjsip_transaction*) 
+	  pj_hash_get( mod_tsx_layer.htable, key->ptr, key->slen, &hval );
     pj_mutex_unlock(mod_tsx_layer.mutex);
 
     TSX_TRACE_((THIS_FILE, 
@@ -631,7 +633,8 @@ static pj_status_t mod_tsx_layer_stop(void)
     /* Destroy all transactions. */
     it = pj_hash_first(mod_tsx_layer.htable, &it_buf);
     while (it) {
-	pjsip_transaction *tsx = pj_hash_this(mod_tsx_layer.htable, it);
+	pjsip_transaction *tsx = (pjsip_transaction *) 
+				 pj_hash_this(mod_tsx_layer.htable, it);
 	pj_hash_iterator_t *next = pj_hash_next(mod_tsx_layer.htable, it);
 	if (tsx)
 	    tsx_destroy(tsx);
@@ -678,7 +681,8 @@ static pj_bool_t mod_tsx_layer_on_rx_request(pjsip_rx_data *rdata)
     /* Find transaction. */
     pj_mutex_lock( mod_tsx_layer.mutex );
 
-    tsx = pj_hash_get( mod_tsx_layer.htable, key.ptr, key.slen, &hval );
+    tsx = (pjsip_transaction *) 
+	  pj_hash_get( mod_tsx_layer.htable, key.ptr, key.slen, &hval );
 
 
     TSX_TRACE_((THIS_FILE, 
@@ -726,7 +730,8 @@ static pj_bool_t mod_tsx_layer_on_rx_response(pjsip_rx_data *rdata)
     /* Find transaction. */
     pj_mutex_lock( mod_tsx_layer.mutex );
 
-    tsx = pj_hash_get( mod_tsx_layer.htable, key.ptr, key.slen, &hval );
+    tsx = (pjsip_transaction *) 
+	  pj_hash_get( mod_tsx_layer.htable, key.ptr, key.slen, &hval );
 
 
     TSX_TRACE_((THIS_FILE, 
@@ -764,7 +769,8 @@ static pj_bool_t mod_tsx_layer_on_rx_response(pjsip_rx_data *rdata)
  */
 PJ_DEF(pjsip_transaction*) pjsip_rdata_get_tsx( pjsip_rx_data *rdata )
 {
-    return rdata->endpt_info.mod_data[mod_tsx_layer.mod.id];
+    return (pjsip_transaction *) 
+	   rdata->endpt_info.mod_data[mod_tsx_layer.mod.id];
 }
 
 
@@ -789,7 +795,8 @@ PJ_DEF(void) pjsip_tsx_layer_dump(pj_bool_t detail)
 	    PJ_LOG(3, (THIS_FILE, " - none - "));
 	} else {
 	    while (it != NULL) {
-		pjsip_transaction *tsx = pj_hash_this(mod_tsx_layer.htable,it);
+		pjsip_transaction *tsx = (pjsip_transaction *)
+					 pj_hash_this(mod_tsx_layer.htable,it);
 
 		PJ_LOG(3, (THIS_FILE, " %s %s|%d|%s",
 			   tsx->obj_name,
@@ -867,7 +874,7 @@ static pj_status_t tsx_create( pjsip_module *tsx_user,
     if (!pool)
 	return PJ_ENOMEM;
 
-    tsx = pj_pool_zalloc(pool, sizeof(pjsip_transaction));
+    tsx = (pjsip_transaction*) pj_pool_zalloc(pool, sizeof(pjsip_transaction));
     tsx->pool = pool;
     tsx->tsx_user = tsx_user;
     tsx->endpt = mod_tsx_layer.endpt;
@@ -933,7 +940,7 @@ static void tsx_destroy( pjsip_transaction *tsx )
     }
 
     /* Clear TLS, so that mutex will not be unlocked */
-    lck = pj_thread_local_get(pjsip_tsx_lock_tls_id);
+    lck = (struct tsx_lock_data *) pj_thread_local_get(pjsip_tsx_lock_tls_id);
     while (lck) {
 	if (lck->tsx == tsx) {
 	    lck->is_alive = 0;
@@ -955,7 +962,7 @@ static void tsx_destroy( pjsip_transaction *tsx )
 static void tsx_timer_callback( pj_timer_heap_t *theap, pj_timer_entry *entry)
 {
     pjsip_event event;
-    pjsip_transaction *tsx = entry->user_data;
+    pjsip_transaction *tsx = (pjsip_transaction *) entry->user_data;
     struct tsx_lock_data lck;
 
     PJ_UNUSED_ARG(theap);
@@ -1005,7 +1012,7 @@ static void tsx_set_state( pjsip_transaction *tsx,
      * rx event.
      */
     if (event_src_type==PJSIP_EVENT_RX_MSG && tsx->tsx_user) {
-	pjsip_rx_data *rdata = event_src;
+	pjsip_rx_data *rdata = (pjsip_rx_data *) event_src;
 
 	pj_assert(rdata != NULL);
 
@@ -1086,7 +1093,7 @@ PJ_DEF(pj_status_t) pjsip_tsx_create_uac( pjsip_module *tsx_user,
     msg = tdata->msg;
 
     /* Make sure CSeq header is present. */
-    cseq = pjsip_msg_find_hdr(msg, PJSIP_H_CSEQ, NULL);
+    cseq = (pjsip_cseq_hdr*) pjsip_msg_find_hdr(msg, PJSIP_H_CSEQ, NULL);
     if (!cseq) {
 	pj_assert(!"CSeq header not present in outgoing message!");
 	return PJSIP_EMISSINGHDR;
@@ -1112,7 +1119,7 @@ PJ_DEF(pj_status_t) pjsip_tsx_create_uac( pjsip_module *tsx_user,
     tsx->cseq = cseq->cseq;
 
     /* Generate Via header if it doesn't exist. */
-    via = pjsip_msg_find_hdr(msg, PJSIP_H_VIA, NULL);
+    via = (pjsip_via_hdr*) pjsip_msg_find_hdr(msg, PJSIP_H_VIA, NULL);
     if (via == NULL) {
 	via = pjsip_via_hdr_create(tdata->pool);
 	pjsip_msg_insert_first_hdr(msg, (pjsip_hdr*) via);
@@ -1121,7 +1128,8 @@ PJ_DEF(pj_status_t) pjsip_tsx_create_uac( pjsip_module *tsx_user,
     /* Generate branch parameter if it doesn't exist. */
     if (via->branch_param.slen == 0) {
 	pj_str_t tmp;
-	via->branch_param.ptr = pj_pool_alloc(tsx->pool, PJSIP_MAX_BRANCH_LEN);
+	via->branch_param.ptr = (char*)
+				pj_pool_alloc(tsx->pool, PJSIP_MAX_BRANCH_LEN);
 	via->branch_param.slen = PJSIP_MAX_BRANCH_LEN;
 	pj_memcpy(via->branch_param.ptr, PJSIP_RFC3261_BRANCH_ID, 
 		  PJSIP_RFC3261_BRANCH_LEN);
@@ -1417,7 +1425,7 @@ PJ_DEF(void) pjsip_tsx_recv_msg( pjsip_transaction *tsx,
 static void send_msg_callback( pjsip_send_state *send_state,
 			       pj_ssize_t sent, pj_bool_t *cont )
 {
-    pjsip_transaction *tsx = send_state->token;
+    pjsip_transaction *tsx = (pjsip_transaction *) send_state->token;
     struct tsx_lock_data lck;
 
     lock_tsx(tsx, &lck);
@@ -1534,7 +1542,7 @@ static void transport_callback(void *token, pjsip_tx_data *tdata,
 			       pj_ssize_t sent)
 {
     if (sent < 0) {
-	pjsip_transaction *tsx = token;
+	pjsip_transaction *tsx = (pjsip_transaction *) token;
 	struct tsx_lock_data lck;
 	char errmsg[PJ_ERR_MSG_SIZE];
 
@@ -2116,7 +2124,8 @@ static pj_status_t tsx_on_state_proceeding_uas( pjsip_transaction *tsx,
 	     * timer G will be scheduled (retransmission).
 	     */
 	    if (!tsx->is_reliable) {
-		pjsip_cseq_hdr *cseq = pjsip_msg_find_hdr( msg, PJSIP_H_CSEQ,
+		pjsip_cseq_hdr *cseq = (pjsip_cseq_hdr *) 
+				       pjsip_msg_find_hdr( msg, PJSIP_H_CSEQ,
                                                            NULL);
 		if (cseq->method.id == PJSIP_INVITE_METHOD) {
 		    tsx->retransmit_count = 0;

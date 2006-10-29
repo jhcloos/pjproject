@@ -55,12 +55,12 @@ PJ_DEF(pj_uint32_t) pj_hash_calc(pj_uint32_t hash, const void *key,
     PJ_CHECK_STACK();
 
     if (keylen==PJ_HASH_KEY_STRING) {
-	const unsigned char *p = key;
+	const unsigned char *p = (const unsigned char*) key;
 	for ( ; *p; ++p ) {
 	    hash = (hash * PJ_HASH_MULTIPLIER) + *p;
 	}
     } else {
-	const unsigned char *p = key,
+	const unsigned char *p = (const unsigned char*) key,
 			    *end = p + keylen;
 	for ( ; p!=end; ++p) {
 	    hash = (hash * PJ_HASH_MULTIPLIER) + *p;
@@ -92,7 +92,7 @@ PJ_DEF(pj_hash_table_t*) pj_hash_create(pj_pool_t *pool, unsigned size)
     /* Check that PJ_HASH_ENTRY_SIZE is correct. */
     PJ_ASSERT_RETURN(sizeof(pj_hash_entry)==PJ_HASH_ENTRY_SIZE, NULL);
 
-    h = pj_pool_alloc(pool, sizeof(pj_hash_table_t));
+    h = (pj_hash_table_t*) pj_pool_alloc(pool, sizeof(pj_hash_table_t));
     h->count = 0;
 
     PJ_LOG( 6, ("hashtbl", "hash table %p created from pool %s", h, pj_pool_getobjname(pool)));
@@ -108,7 +108,7 @@ PJ_DEF(pj_hash_table_t*) pj_hash_create(pj_pool_t *pool, unsigned size)
     table_size -= 1;
     
     h->rows = table_size;
-    h->table = pj_pool_calloc(pool, table_size+1, sizeof(pj_hash_entry*));
+    h->table = (pj_hash_entry**) pj_pool_calloc(pool, table_size+1, sizeof(pj_hash_entry*));
     return h;
 }
 
@@ -128,13 +128,13 @@ static pj_hash_entry **find_entry( pj_pool_t *pool, pj_hash_table_t *ht,
 	 */
 	hash=0;
 	if (keylen==PJ_HASH_KEY_STRING) {
-	    const unsigned char *p = key;
+	    const unsigned char *p = (const unsigned char*)key;
 	    for ( ; *p; ++p ) {
 		hash = hash * PJ_HASH_MULTIPLIER + *p;
 	    }
 	    keylen = p - (const unsigned char*)key;
 	} else {
-	    const unsigned char *p = key,
+	    const unsigned char *p = (const unsigned char*) key,
 				*end = p + keylen;
 	    for ( ; p!=end; ++p) {
 		hash = hash * PJ_HASH_MULTIPLIER + *p;
@@ -165,12 +165,12 @@ static pj_hash_entry **find_entry( pj_pool_t *pool, pj_hash_table_t *ht,
      * If entry_buf is specified, use it. Otherwise allocate from pool.
      */
     if (entry_buf) {
-	entry = entry_buf;
+	entry = (pj_hash_entry*) entry_buf;
     } else {
 	/* Pool must be specified! */
 	PJ_ASSERT_RETURN(pool != NULL, NULL);
 
-	entry = pj_pool_alloc(pool, sizeof(pj_hash_entry));
+	entry = (pj_hash_entry*) pj_pool_alloc(pool, sizeof(pj_hash_entry));
 	PJ_LOG(6, ("hashtbl", 
 		   "%p: New p_entry %p created, pool used=%u, cap=%u", 
 		   ht, entry,  pj_pool_get_used_size(pool), 

@@ -81,7 +81,7 @@ pjmedia_sdp_neg_create_w_local_offer( pj_pool_t *pool,
     PJ_ASSERT_RETURN((status=pjmedia_sdp_validate(local))==PJ_SUCCESS, status);
 
     /* Create and initialize negotiator. */
-    neg = pj_pool_zalloc(pool, sizeof(pjmedia_sdp_neg));
+    neg = (pjmedia_sdp_neg*) pj_pool_zalloc(pool, sizeof(pjmedia_sdp_neg));
     PJ_ASSERT_RETURN(neg != NULL, PJ_ENOMEM);
 
     neg->state = PJMEDIA_SDP_NEG_STATE_LOCAL_OFFER;
@@ -115,7 +115,7 @@ pjmedia_sdp_neg_create_w_remote_offer(pj_pool_t *pool,
 	return status;
 
     /* Create and initialize negotiator. */
-    neg = pj_pool_zalloc(pool, sizeof(pjmedia_sdp_neg));
+    neg = (pjmedia_sdp_neg*) pj_pool_zalloc(pool, sizeof(pjmedia_sdp_neg));
     PJ_ASSERT_RETURN(neg != NULL, PJ_ENOMEM);
 
     neg->neg_remote_sdp = pjmedia_sdp_session_clone(pool, remote);
@@ -633,7 +633,7 @@ static pj_bool_t match_offer(pj_pool_t *pool,
 		 * compare the encoding name.
 		 */
 		const pjmedia_sdp_attr *a;
-		pjmedia_sdp_rtpmap or;
+		pjmedia_sdp_rtpmap ormt;
 		pj_bool_t is_codec;
 
 		/* Get the rtpmap for the payload type in the offer. */
@@ -643,9 +643,9 @@ static pj_bool_t match_offer(pj_pool_t *pool,
 		    pj_assert(!"Bug! Offer should have been validated");
 		    return PJ_FALSE;
 		}
-		pjmedia_sdp_attr_get_rtpmap(a, &or);
+		pjmedia_sdp_attr_get_rtpmap(a, &ormt);
 
-		if (!pj_strcmp2(&or.enc_name, "telephone-event")) {
+		if (!pj_strcmp2(&ormt.enc_name, "telephone-event")) {
 		    offer_has_telephone_event = 1;
 		    if (found_matching_telephone_event)
 			continue;
@@ -668,8 +668,8 @@ static pj_bool_t match_offer(pj_pool_t *pool,
 			pjmedia_sdp_attr_get_rtpmap(a, &lr);
 
 			/* See if encoding name and clock rate match */
-			if (!pj_strcmp(&or.enc_name, &lr.enc_name) &&
-			    or.clock_rate == lr.clock_rate) 
+			if (!pj_strcmp(&ormt.enc_name, &lr.enc_name) &&
+			    ormt.clock_rate == lr.clock_rate) 
 			{
 			    /* Match! */
 			    if (is_codec)

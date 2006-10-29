@@ -177,7 +177,7 @@ PJ_DEF(pj_pool_t*) pj_pool_create_int( pj_pool_factory *f, const char *name,
 	callback = f->policy.callback;
 
     /* Allocate initial block */
-    buffer = (*f->policy.block_alloc)(f, initial_size);
+    buffer = (unsigned char*) (*f->policy.block_alloc)(f, initial_size);
     if (!buffer)
 	return NULL;
 

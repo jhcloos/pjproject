@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
-#include <pjsip/sip_transport.h>
+#include <pjsip/sip_transport_udp.h>
 #include <pjsip/sip_endpoint.h>
 #include <pjsip/sip_errno.h>
 #include <pj/addr_resolv.h>
@@ -81,7 +81,7 @@ static void init_rdata(struct udp_transport *tp, unsigned rdata_index,
     /* Reset pool. */
     pj_pool_reset(pool);
 
-    rdata = pj_pool_zalloc(pool, sizeof(pjsip_rx_data));
+    rdata = (pjsip_rx_data*) pj_pool_zalloc(pool, sizeof(pjsip_rx_data));
 
     /* Init tp_info part. */
     rdata->tp_info.pool = pool;
@@ -260,7 +260,7 @@ static void udp_on_write_complete( pj_ioqueue_key_t *key,
 				   pj_ioqueue_op_key_t *op_key,
 				   pj_ssize_t bytes_sent)
 {
-    struct udp_transport *tp = pj_ioqueue_get_user_data(key);
+    struct udp_transport *tp = (struct udp_transport *) pj_ioqueue_get_user_data(key);
     pjsip_tx_data_op_key *tdata_op_key = (pjsip_tx_data_op_key*)op_key;
 
     tdata_op_key->tdata = NULL;
@@ -336,8 +336,10 @@ static pj_status_t udp_destroy( pjsip_transport *transport )
     */
 
     /* Unregister from ioqueue. */
-    if (tp->key)
+    if (tp->key) {
 	pj_ioqueue_unregister(tp->key);
+	tp->sock = PJ_INVALID_SOCKET;
+    }
 
     /* Close socket. */
     if (tp->sock && tp->sock != PJ_INVALID_SOCKET)
@@ -424,7 +426,8 @@ PJ_DEF(pj_status_t) pjsip_udp_transport_attach( pjsip_endpoint *endpt,
 	return PJ_ENOMEM;
 
     /* Create the UDP transport object. */
-    tp = pj_pool_zalloc(pool, sizeof(struct udp_transport));
+    tp = (struct udp_transport*) 
+	 pj_pool_zalloc(pool, sizeof(struct udp_transport));
 
     /* Save pool. */
     tp->base.pool = pool;
@@ -473,7 +476,7 @@ PJ_DEF(pj_status_t) pjsip_udp_transport_attach( pjsip_endpoint *endpt,
     tp->base.remote_name.port = 0;
 
     /* Transport info. */
-    tp->base.info = pj_pool_alloc(pool, 80);
+    tp->base.info = (char*) pj_pool_alloc(pool, 80);
     pj_ansi_sprintf( 
 	tp->base.info, "udp %s:%d [published as %s:%d]",
 	pj_inet_ntoa(((pj_sockaddr_in*)&tp->base.local_addr)->sin_addr),
@@ -518,7 +521,8 @@ PJ_DEF(pj_status_t) pjsip_udp_transport_attach( pjsip_endpoint *endpt,
 
     /* Create rdata and put it in the array. */
     tp->rdata_cnt = 0;
-    tp->rdata = pj_pool_calloc(tp->base.pool, async_cnt, 
+    tp->rdata = (pjsip_rx_data**)
+	        pj_pool_calloc(tp->base.pool, async_cnt, 
 			       sizeof(pjsip_rx_data*));
     for (i=0; i<async_cnt; ++i) {
 	pj_pool_t *rdata_pool = pjsip_endpt_create_pool(endpt, "rtd%p", 
@@ -552,6 +556,7 @@ PJ_DEF(pj_status_t) pjsip_udp_transport_attach( pjsip_endpoint *endpt,
 				 size);
 	} else if (status != PJ_EPENDING) {
 	    /* Error! */
+	    pj_atomic_dec(tp->base.ref_cnt);
 	    pjsip_transport_unregister(tp->base.tpmgr, &tp->base);
 	    return status;
 	}
