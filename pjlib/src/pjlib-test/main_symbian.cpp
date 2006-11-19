@@ -70,7 +70,7 @@ public:
 
 void MyScheduler::Error(TInt aError) const
 {
-    int i = 0;
+    PJ_UNUSED_ARG(aError);
 }
 
 class ProgramStarter : public CActive
@@ -154,6 +154,8 @@ static void log_writer(int level, const char *buf, int len)
 {
     wchar_t buf16[PJ_LOG_MAX_SIZE];
 
+    PJ_UNUSED_ARG(level);
+    
     pj_ansi_to_unicode(buf, len, buf16, PJ_ARRAY_SIZE(buf16));
 
     TPtrC16 aBuf((const TUint16*)buf16, (TInt)len);

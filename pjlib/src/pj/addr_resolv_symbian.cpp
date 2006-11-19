@@ -39,10 +39,13 @@ PJ_DEF(pj_status_t) pj_gethostbyname(const pj_str_t *name, pj_hostent *he)
 
     // Resolve!
     TNameEntry nameEntry;
-    TInt rc = resv.GetByName(data, nameEntry);
-
-    if (rc != KErrNone)
-	return PJ_RETURN_OS_ERROR(rc);
+    TRequestStatus reqStatus;
+    
+    resv.GetByName(data, nameEntry, reqStatus);
+    User::WaitForRequest(reqStatus);
+    
+    if (reqStatus != KErrNone)
+	return PJ_RETURN_OS_ERROR(reqStatus.Int());
 
     // Get the resolved TInetAddr
     const TNameRecord &rec = (const TNameRecord&) nameEntry;

@@ -66,7 +66,7 @@
 
 #define UDP_PORT	51234
 #define TCP_PORT        (UDP_PORT+10)
-#define BIG_DATA_LEN	9000
+#define BIG_DATA_LEN	8192
 #define ADDRESS		"127.0.0.1"
 
 
@@ -349,7 +349,7 @@ static int udp_test(void)
 	app_perror("...bind error", rc);
 	rc = -121; goto on_error;
     }
-	    
+
     /* Test send/recv, with sendto */
     rc = send_recv_test(PJ_SOCK_DGRAM, ss, cs, &dstaddr, NULL, 
                         sizeof(dstaddr));
@@ -361,7 +361,9 @@ static int udp_test(void)
                         &srcaddr, sizeof(dstaddr));
     if (rc != 0)
 	goto on_error;
-
+    
+// This test will fail on S60 3rd Edition MR2
+#if 1
     /* connect() the sockets. */
     rc = pj_sock_connect(cs, &dstaddr, sizeof(dstaddr));
     if (rc != 0) {
@@ -379,6 +381,7 @@ static int udp_test(void)
                         sizeof(srcaddr));
     if (rc != 0)
 	goto on_error;
+#endif
 
 on_error:
     retval = rc;
@@ -436,12 +439,70 @@ static int ioctl_test(void)
     return 0;
 }
 
+#if 0
+#include "../pj/os_symbian.h"
+static int connect_test()
+{
+	RSocketServ rSockServ;
+	RSocket rSock;
+	TInetAddr inetAddr;
+	TRequestStatus reqStatus;
+	char buffer[16];
+	TPtrC8 data((const TUint8*)buffer, (TInt)sizeof(buffer));
+ 	int rc;
+	
+	rc = rSockServ.Connect();
+	if (rc != KErrNone)
+		return rc;
+	
+	rc = rSock.Open(rSockServ, KAfInet, KSockDatagram, KProtocolInetUdp);
+    	if (rc != KErrNone) 
+    	{    		
+    		rSockServ.Close();
+    		return rc;
+    	}
+   	
+    	inetAddr.Init(KAfInet);
+    	inetAddr.Input(_L("127.0.0.1"));
+    	inetAddr.SetPort(80);
+    	
+    	rSock.Connect(inetAddr, reqStatus);
+    	User::WaitForRequest(reqStatus);
+
+    	if (reqStatus != KErrNone) {
+		rSock.Close();
+    		rSockServ.Close();
+		return rc;
+    	}
+    
+    	rSock.Send(data, 0, reqStatus);
+    	User::WaitForRequest(reqStatus);
+    	
+    	if (reqStatus!=KErrNone) {
+    		rSock.Close();
+    		rSockServ.Close();
+    		return rc;
+    	}
+    	
+    	rSock.Close();
+    	rSockServ.Close();
+	return KErrNone;
+}
+#endif
+
 int sock_test()
 {
     int rc;
     
     pj_create_random_string(bigdata, BIG_DATA_LEN);
 
+// Enable this to demonstrate the error witn S60 3rd Edition MR2
+#if 0
+    rc = connect_test();
+    if (rc != 0)
+    	return rc;
+#endif
+    
     rc = format_test();
     if (rc != 0)
 	return rc;

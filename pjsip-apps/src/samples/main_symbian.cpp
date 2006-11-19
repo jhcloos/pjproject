@@ -33,6 +33,10 @@ LOCAL_C void MainL()
     // add your program code here, example code below
     //
     char *argv[] = { "main_symbian", NULL };
+    
+    //console->Printf(_L("Press any key to start\n"));
+    //console->Getch();
+    
     int rc = pj_app_main(1, argv);
 
     console->Printf(_L(" [press any key]\n"));

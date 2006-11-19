@@ -141,12 +141,16 @@ int pj_app_main(int argc, char *argv[])
 #ifdef HAS_UDP_TRANSPORT
     {
 	pj_sockaddr_in addr;
+	pjsip_host_port a_name;
 
 	addr.sin_family = PJ_AF_INET;
 	addr.sin_addr.s_addr = 0;
 	addr.sin_port = pj_htons(5060);
 
-	status = pjsip_udp_transport_start( sip_endpt, &addr, NULL, 1, NULL);
+	a_name.host = pj_str("127.0.0.1");
+	a_name.port = 5060;
+	
+	status = pjsip_udp_transport_start( sip_endpt, &addr, &a_name, 1, NULL);
 	if (status != PJ_SUCCESS) {
 	    char errmsg[PJ_ERR_MSG_SIZE];
 

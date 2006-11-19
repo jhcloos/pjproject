@@ -114,7 +114,7 @@ private:
     pj_ioqueue_t		*ioqueue_;
     pj_ioqueue_key_t		*key_;
     CPjSocket			*sock_;
-    const pj_ioqueue_callback	*cb_;
+    pj_ioqueue_callback		 cb_;
     void			*user_data_;
 
     // Symbian data.
@@ -155,9 +155,10 @@ private:
 		     pj_ioqueue_key_t *key, pj_sock_t sock, 
 		     const pj_ioqueue_callback *cb, void *user_data)
     : CActive(CActive::EPriorityStandard),
-	  ioqueue_(ioqueue), key_(key), sock_((CPjSocket*)sock), cb_(cb), 
+	  ioqueue_(ioqueue), key_(key), sock_((CPjSocket*)sock), 
 	  user_data_(user_data), aBufferPtr_(NULL, 0), type_(TYPE_NONE)
     {
+    	pj_memcpy(&cb_, cb, sizeof(*cb));
     }
 
 
@@ -165,6 +166,9 @@ private:
     {
 	CActiveScheduler::Add(this);
     }
+    
+    void HandleReadCompletion();
+    CPjSocket *HandleAcceptCompletion();
 };
 
 
@@ -216,7 +220,18 @@ pj_status_t CIoqueueCallback::StartRead(pj_ioqueue_op_key_t *op_key,
 	SetActive();
 	return PJ_EPENDING;
     } else {
-	return PJ_RETURN_OS_ERROR(iStatus.Int());
+    	// Complete immediately (with success or error)
+    	if (iStatus == KErrNone) {
+    	    *size = aBufferPtr_.Length();
+    	    HandleReadCompletion();
+    	    return PJ_SUCCESS;
+    	}
+    	else {
+	    pending_data_.read_.op_key_ = NULL;
+	    pending_data_.read_.addr_ = NULL;
+	    pending_data_.read_.addrlen_ = NULL;
+	    return PJ_RETURN_OS_ERROR(iStatus.Int());
+    	}
     }
 }
 
@@ -249,36 +264,28 @@ pj_status_t CIoqueueCallback::StartAccept(pj_ioqueue_op_key_t *op_key,
 	SetActive();
 	return PJ_EPENDING;
     } else {
-	return PJ_RETURN_OS_ERROR(iStatus.Int());
+    	// Accept() completed immediately (with success or error).
+    	if (iStatus == KErrNone) {
+    	    HandleAcceptCompletion();
+    	    return PJ_SUCCESS;
+    	}
+    	else {
+	    pending_data_.accept_.op_key_ = NULL;
+	    pending_data_.accept_.new_sock_ = NULL;
+	    pending_data_.accept_.local_ = NULL;
+	    pending_data_.accept_.remote_ = NULL;
+	    pending_data_.accept_.addrlen_ = NULL;
+	    return PJ_RETURN_OS_ERROR(iStatus.Int());
+    	}
     }
 }
 
 
 //
-// Completion callback.
+// Handle asynchronous RecvFrom() completion
 //
-void CIoqueueCallback::RunL()
+void CIoqueueCallback::HandleReadCompletion() 
 {
-    Type cur_type = type_;
-
-    type_ = TYPE_NONE;
-
-    if (cur_type == TYPE_READ) {
-	//
-	// Completion of asynchronous RecvFrom()
-	//
-
-	/* Clear op_key (save it to temp variable first!) */
-	pj_ioqueue_op_key_t	*op_key = pending_data_.read_.op_key_;
-	pending_data_.read_.op_key_ = NULL;
-
-	// Handle failure condition
-	if (iStatus != KErrNone) {
-	    cb_->on_read_complete(key_, op_key, 
-				  -PJ_RETURN_OS_ERROR(iStatus.Int()));
-	    return;
-	}
-
 	if (pending_data_.read_.addr_) {
 	    PjSymbianOS::Addr2pj(aAddress_, 
 				 *(pj_sockaddr_in*)pending_data_.read_.addr_);
@@ -288,29 +295,16 @@ void CIoqueueCallback::RunL()
 	    *pending_data_.read_.addrlen_ = sizeof(pj_sockaddr_in);
 	    pending_data_.read_.addrlen_ = NULL;
 	}
-
-	/* Call callback */
-	cb_->on_read_complete(key_, op_key, aBufferPtr_.Length());
-
-    } else if (cur_type == TYPE_ACCEPT) {
-	//
-	// Completion of asynchronous Accept()
-	//
 	
-	/* Clear op_key (save it to temp variable first!) */
-	pj_ioqueue_op_key_t	*op_key = pending_data_.read_.op_key_;
 	pending_data_.read_.op_key_ = NULL;
+}
 
-	// Handle failure condition
-	if (iStatus != KErrNone) {
-	    if (pending_data_.accept_.new_sock_)
-		*pending_data_.accept_.new_sock_ = PJ_INVALID_SOCKET;
 
-	    cb_->on_accept_complete(key_, op_key, PJ_INVALID_SOCKET,
-				    -PJ_RETURN_OS_ERROR(iStatus.Int()));
-	    return;
-	}
-
+//
+// Handle asynchronous Accept() completion.
+//
+CPjSocket *CIoqueueCallback::HandleAcceptCompletion() 
+{
 	CPjSocket *pjNewSock = new CPjSocket(blank_sock_);
 
 	if (pending_data_.accept_.new_sock_) {
@@ -342,10 +336,73 @@ void CIoqueueCallback::RunL()
 	    *pending_data_.accept_.addrlen_ = sizeof(pj_sockaddr_in);
 	    pending_data_.accept_.addrlen_ = NULL;
 	}
+	
+	return pjNewSock;
+}
 
+
+//
+// Completion callback.
+//
+void CIoqueueCallback::RunL()
+{
+    Type cur_type = type_;
+
+    type_ = TYPE_NONE;
+
+    if (cur_type == TYPE_READ) {
+	//
+	// Completion of asynchronous RecvFrom()
+	//
+
+	/* Clear op_key (save it to temp variable first!) */
+	pj_ioqueue_op_key_t	*op_key = pending_data_.read_.op_key_;
+	pending_data_.read_.op_key_ = NULL;
+
+	// Handle failure condition
+	if (iStatus != KErrNone) {
+	    if (cb_.on_read_complete) {
+	    	cb_.on_read_complete( key_, op_key, 
+				      -PJ_RETURN_OS_ERROR(iStatus.Int()));
+	    }
+	    return;
+	}
+
+	HandleReadCompletion();
+
+	/* Call callback */
+	if (cb_.on_read_complete) {
+	    cb_.on_read_complete(key_, op_key, aBufferPtr_.Length());
+	}
+
+    } else if (cur_type == TYPE_ACCEPT) {
+	//
+	// Completion of asynchronous Accept()
+	//
+	
+	/* Clear op_key (save it to temp variable first!) */
+	pj_ioqueue_op_key_t	*op_key = pending_data_.read_.op_key_;
+	pending_data_.read_.op_key_ = NULL;
+
+	// Handle failure condition
+	if (iStatus != KErrNone) {
+	    if (pending_data_.accept_.new_sock_)
+		*pending_data_.accept_.new_sock_ = PJ_INVALID_SOCKET;
+	    
+	    if (cb_.on_accept_complete) {
+	    	cb_.on_accept_complete( key_, op_key, PJ_INVALID_SOCKET,
+				        -PJ_RETURN_OS_ERROR(iStatus.Int()));
+	    }
+	    return;
+	}
+
+	CPjSocket *pjNewSock = HandleAcceptCompletion();
+	
 	// Call callback.
-	cb_->on_accept_complete(key_, op_key, (pj_sock_t)pjNewSock, 
-				PJ_SUCCESS);
+	if (cb_.on_accept_complete) {
+	    cb_.on_accept_complete( key_, op_key, (pj_sock_t)pjNewSock, 
+				    PJ_SUCCESS);
+	}
     }
 
     ioqueue_->eventCount++;
@@ -374,9 +431,10 @@ void CIoqueueCallback::CancelOperation(pj_ioqueue_op_key_t *op_key,
 
     Cancel();
 
-    if (cur_type == TYPE_READ)
-	cb_->on_read_complete(key_, op_key, bytes_status);
-    else if (cur_type == TYPE_ACCEPT)
+    if (cur_type == TYPE_READ) {
+    	if (cb_.on_read_complete)
+    	    cb_.on_read_complete(key_, op_key, bytes_status);
+    } else if (cur_type == TYPE_ACCEPT)
 	;
 }
 
