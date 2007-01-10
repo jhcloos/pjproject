@@ -103,6 +103,9 @@ int pj_app_main(int argc, char *argv[])
 
     pj_status_t status;
     
+    PJ_UNUSED_ARG(argc);
+    PJ_UNUSED_ARG(argv);
+    
     /* Must init PJLIB first: */
     status = pj_init();
     PJ_ASSERT_RETURN(status == PJ_SUCCESS, 1);
