@@ -93,7 +93,34 @@
  * Symetric NAT detected by STUN
  */
 #define PJLIB_UTIL_ESTUNSYMMETRIC   (PJLIB_UTIL_ERRNO_START+11)	/* 320011 */
+/**
+ * @hideinitializer
+ * Invalid STUN attribute
+ */
+#define PJLIB_UTIL_ESTUNINATTR	    (PJLIB_UTIL_ERRNO_START+12)	/* 320012 */
+/**
+ * @hideinitializer
+ * Too many STUN attributes.
+ */
+#define PJLIB_UTIL_ESTUNTOOMANYATTR (PJLIB_UTIL_ERRNO_START+13)	/* 320013 */
+/**
+ * @hideinitializer
+ * Unknown STUN attribute.
+ */
+#define PJLIB_UTIL_ESTUNUNKNOWNATTR (PJLIB_UTIL_ERRNO_START+14)	/* 320014 */
+/**
+ * @hideinitializer
+ * Expecting STUN response message.
+ */
+#define PJLIB_UTIL_ESTUNNOTRESPONSE (PJLIB_UTIL_ERRNO_START+15)	/* 320015 */
+/**
+ * @hideinitializer
+ * Transaction ID mismatch.
+ */
+#define PJLIB_UTIL_ESTUNINVALIDID   (PJLIB_UTIL_ERRNO_START+16)	/* 320016 */
 
+
+#define PJ_STATUS_FROM_STUN_CODE(code)	-1
 
 
 /************************************************************

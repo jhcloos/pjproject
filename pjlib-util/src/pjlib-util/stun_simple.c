@@ -16,7 +16,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
  */
-#include <pjlib-util/stun.h>
+#include <pjlib-util/stun_simple.h>
 #include <pjlib-util/errno.h>
 #include <pj/pool.h>
 #include <pj/log.h>
