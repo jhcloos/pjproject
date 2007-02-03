@@ -1,4 +1,4 @@
-/* $Id */
+/* $Id$ */
 /* 
  * Copyright (C) 2003-2005 Benny Prijono <benny@prijono.org>
  *
@@ -38,6 +38,7 @@ struct pj_stun_client_tsx
 
     pj_uint32_t		 tsx_id[4];
 
+    pj_bool_t		 require_retransmit;
     pj_timer_entry	 timer;
     unsigned		 transmit_count;
     pj_time_val		 retransmit_time;
@@ -108,7 +109,7 @@ PJ_DEF(pj_status_t) pj_stun_client_tsx_destroy(pj_stun_client_tsx *tsx)
 
 
 /*
- * .
+ * Set user data.
  */
 PJ_DEF(pj_status_t) pj_stun_client_tsx_set_data(pj_stun_client_tsx *tsx,
 						void *data)
@@ -120,7 +121,7 @@ PJ_DEF(pj_status_t) pj_stun_client_tsx_set_data(pj_stun_client_tsx *tsx,
 
 
 /*
- * .
+ * Get the user data
  */
 PJ_DEF(void*) pj_stun_client_tsx_get_data(pj_stun_client_tsx *tsx)
 {
@@ -138,41 +139,45 @@ static pj_status_t tsx_transmit_msg(pj_stun_client_tsx *tsx)
 
     PJ_ASSERT_RETURN(tsx->timer.id == 0, PJ_EBUSY);
 
-    /* Calculate retransmit/timeout delay */
-    if (tsx->transmit_count == 0) {
-	tsx->retransmit_time.sec = 0;
-	tsx->retransmit_time.msec = tsx->endpt->rto_msec;
+    if (tsx->require_retransmit) {
+	/* Calculate retransmit/timeout delay */
+	if (tsx->transmit_count == 0) {
+	    tsx->retransmit_time.sec = 0;
+	    tsx->retransmit_time.msec = tsx->endpt->rto_msec;
 
-    } else if (tsx->transmit_count < PJ_STUN_MAX_RETRANSMIT_COUNT) {
-	unsigned msec;
+	} else if (tsx->transmit_count < PJ_STUN_MAX_RETRANSMIT_COUNT) {
+	    unsigned msec;
 
-	msec = PJ_TIME_VAL_MSEC(tsx->retransmit_time);
-	msec = (msec >> 1) + 100;
-	tsx->retransmit_time.sec = msec / 1000;
-	tsx->retransmit_time.msec = msec % 100;
+	    msec = PJ_TIME_VAL_MSEC(tsx->retransmit_time);
+	    msec = (msec >> 1) + 100;
+	    tsx->retransmit_time.sec = msec / 1000;
+	    tsx->retransmit_time.msec = msec % 100;
 
-    } else {
-	tsx->retransmit_time.sec = PJ_STUN_TIMEOUT_VALUE / 1000;
-	tsx->retransmit_time.msec = PJ_STUN_TIMEOUT_VALUE % 1000;
-    }
+	} else {
+	    tsx->retransmit_time.sec = PJ_STUN_TIMEOUT_VALUE / 1000;
+	    tsx->retransmit_time.msec = PJ_STUN_TIMEOUT_VALUE % 1000;
+	}
 
-    /* Schedule timer first because when send_msg() failed we can
-     * cancel it (as opposed to when schedule_timer() failed we cannot
-     * cancel transmission).
-     */
-    status = pj_timer_heap_schedule(tsx->endpt->timer_heap, &tsx->timer,
-				    &tsx->retransmit_time);
-    if (status != PJ_SUCCESS) {
-	tsx->timer.id = 0;
-	return status;
+	/* Schedule timer first because when send_msg() failed we can
+	 * cancel it (as opposed to when schedule_timer() failed we cannot
+	 * cancel transmission).
+	 */
+	status = pj_timer_heap_schedule(tsx->endpt->timer_heap, &tsx->timer,
+					&tsx->retransmit_time);
+	if (status != PJ_SUCCESS) {
+	    tsx->timer.id = 0;
+	    return status;
+	}
     }
 
 
     /* Send message */
     status = tsx->cb.on_send_msg(tsx, tsx->last_pkt, tsx->last_pkt_size);
     if (status != PJ_SUCCESS) {
-	pj_timer_heap_cancel(tsx->endpt->timer_heap, &tsx->timer);
-	tsx->timer.id = 0;
+	if (tsx->timer.id != 0) {
+	    pj_timer_heap_cancel(tsx->endpt->timer_heap, &tsx->timer);
+	    tsx->timer.id = 0;
+	}
 	stun_perror(tsx, "STUN error sending message", status);
 	return status;
     }
@@ -184,10 +189,12 @@ static pj_status_t tsx_transmit_msg(pj_stun_client_tsx *tsx)
     return status;
 }
 
+
 /*
- * .
+ * Send outgoing message and start STUN transaction.
  */
 PJ_DEF(pj_status_t) pj_stun_client_tsx_send_msg(pj_stun_client_tsx *tsx,
+						pj_bool_t retransmit,
 						const pj_stun_msg *msg)
 {
     pj_status_t status;
@@ -207,6 +214,10 @@ PJ_DEF(pj_status_t) pj_stun_client_tsx_send_msg(pj_stun_client_tsx *tsx,
     tsx->tsx_id[0] = msg->hdr.magic;
     pj_memcpy(&tsx->tsx_id[1], msg->hdr.tsx_id, 12);
 
+    /* Update STUN retransmit flag */
+    tsx->require_retransmit = retransmit;
+
+    /* Send the message */
     return tsx_transmit_msg(tsx);
 }
 
@@ -242,7 +253,7 @@ static void retransmit_timer_callback(pj_timer_heap_t *timer_heap,
 
 
 /*
- * 
+ * Notify the STUN transaction about the arrival of STUN response.
  */
 PJ_DEF(pj_status_t) pj_stun_client_tsx_on_rx_msg(pj_stun_client_tsx *tsx,
 						 const void *packet,
@@ -291,7 +302,12 @@ PJ_DEF(pj_status_t) pj_stun_client_tsx_on_rx_msg(pj_stun_client_tsx *tsx,
     /* Find STUN error code attribute */
     err_attr = (pj_stun_error_code_attr*) 
 		pj_stun_msg_find_attr(msg, PJ_STUN_ATTR_ERROR_CODE, 0);
-    if (err_attr->err_class == 1) {
+
+    if (err_attr && err_attr->err_class <= 2) {
+	/* draft-ietf-behave-rfc3489bis-05.txt Section 8.3.2:
+	 * Any response between 100 and 299 MUST result in the cessation
+	 * of request retransmissions, but otherwise is discarded.
+	 */
 	PJ_LOG(4,(tsx->obj_name, 
 		  "STUN rx_msg() error: received provisional %d code (%.*s)",
 		  err_attr->err_class * 100 + err_attr->number,
@@ -300,7 +316,7 @@ PJ_DEF(pj_status_t) pj_stun_client_tsx_on_rx_msg(pj_stun_client_tsx *tsx,
 	return PJ_SUCCESS;
     }
 
-    if (err_attr==NULL || err_attr->err_class == 2) {
+    if (err_attr == NULL) {
 	status = PJ_SUCCESS;
     } else {
 	status = PJ_STATUS_FROM_STUN_CODE(err_attr->err_class * 100 +

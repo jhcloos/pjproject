@@ -1,4 +1,4 @@
-/* $Id */
+/* $Id$ */
 /* 
  * Copyright (C) 2003-2005 Benny Prijono <benny@prijono.org>
  *
@@ -20,8 +20,8 @@
 #define __PJ_STUN_ENDPOINT_H__
 
 /**
- * @file stun_msg.h
- * @brief STUN message components.
+ * @file stun_endpoint.h
+ * @brief STUN endpoint.
  */
 
 #include <pjlib-util/stun_msg.h>

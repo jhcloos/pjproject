@@ -1,4 +1,4 @@
-/* $Id */
+/* $Id$ */
 /* 
  * Copyright (C) 2003-2005 Benny Prijono <benny@prijono.org>
  *
@@ -27,10 +27,6 @@
 #include <pjlib-util/types.h>
 #include <pj/sock.h>
 
-/**
- * @defgroup PJLIB_UTIL_STUN Simple Traversal Underneath NAT (STUN)
- * @ingroup PJLIB_UTIL
- */
 
 PJ_BEGIN_DECL
 

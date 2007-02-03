@@ -1,4 +1,4 @@
-/* $Id */
+/* $Id$ */
 /* 
  * Copyright (C) 2003-2005 Benny Prijono <benny@prijono.org>
  *
@@ -27,15 +27,10 @@
 #include <pjlib-util/types.h>
 #include <pj/sock.h>
 
-/**
- * @defgroup PJLIB_UTIL_STUN_CLIENT Mini/Tiny STUN Client
- * @ingroup PJLIB_UTIL
- * @{
- */
 
 PJ_BEGIN_DECL
 
-/**
+/*
  * This enumeration describes STUN message types.
  */
 typedef enum pj_stun_msg_type
@@ -49,7 +44,7 @@ typedef enum pj_stun_msg_type
 } pj_stun_msg_type;
 
 
-/**
+/*
  * This enumeration describes STUN attribute types.
  */
 typedef enum pj_stun_attr_type
@@ -68,7 +63,7 @@ typedef enum pj_stun_attr_type
 } pj_stun_attr_type;
 
 
-/**
+/*
  * This structre describes STUN message header.
  */
 typedef struct pj_stun_msg_hdr
@@ -79,7 +74,7 @@ typedef struct pj_stun_msg_hdr
 } pj_stun_msg_hdr;
 
 
-/**
+/*
  * This structre describes STUN attribute header.
  */
 typedef struct pj_stun_attr_hdr
@@ -89,7 +84,7 @@ typedef struct pj_stun_attr_hdr
 } pj_stun_attr_hdr;
 
 
-/**
+/*
  * This structre describes STUN MAPPED-ADDR attribute.
  */
 typedef struct pj_stun_mapped_addr_attr
@@ -146,6 +141,17 @@ PJ_DECL(pj_status_t) pj_stun_parse_msg( void *buf, pj_size_t len,
 				        pj_stun_msg *msg);
 PJ_DECL(void*) pj_stun_msg_find_attr( pj_stun_msg *msg, pj_stun_attr_type t);
 
+
+/**
+ * @defgroup PJLIB_UTIL_STUN_CLIENT Simple STUN Helper
+ * @ingroup PJLIB_UTIL_STUN
+ * @brief A simple and small footprint STUN resolution helper
+ * @{
+ *
+ * This is the older implementation of STUN client, with only one function
+ * provided (pj_stun_get_mapped_addr()) to retrieve the public IP address
+ * of multiple sockets.
+ */
 
 /**
  * This is the main function to request the mapped address of local sockets

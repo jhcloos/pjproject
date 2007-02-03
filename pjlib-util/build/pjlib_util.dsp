@@ -207,11 +207,19 @@ SOURCE="..\include\pjlib-util\string.h"
 # End Source File
 # Begin Source File
 
+SOURCE="..\include\pjlib-util\stun_doc.h"
+# End Source File
+# Begin Source File
+
 SOURCE="..\include\pjlib-util\stun_endpoint.h"
 # End Source File
 # Begin Source File
 
 SOURCE="..\include\pjlib-util\stun_msg.h"
+# End Source File
+# Begin Source File
+
+SOURCE="..\include\pjlib-util\stun_server.h"
 # End Source File
 # Begin Source File
 
