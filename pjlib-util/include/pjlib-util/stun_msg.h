@@ -178,27 +178,42 @@ enum pj_stun_msg_class_e
 /**
  * Determine if the message type is a request.
  */
-#define PJ_STUN_IS_REQUEST(msg_type)	(((msg_type) & 0x0F00) == 0x0000)
+#define PJ_STUN_IS_REQUEST(msg_type)	(((msg_type) & 0x0110) == 0x0000)
 
 
 /**
  * Determine if the message type is a response.
  */
-#define PJ_STUN_IS_RESPONSE(msg_type)	(((msg_type) & 0x0F00) == 0x0100)
+#define PJ_STUN_IS_RESPONSE(msg_type)	(((msg_type) & 0x0110) == 0x0100)
 
+
+/**
+ * The response bit in the message type.
+ */
+#define PJ_STUN_RESPONSE_BIT		(0x0100)
 
 /**
  * Determine if the message type is an error response.
  */
-#define PJ_STUN_IS_ERROR_RESPONSE(msg_type) (((msg_type) & 0x0FF0) == 0x0110)
+#define PJ_STUN_IS_ERROR_RESPONSE(msg_type) (((msg_type) & 0x0110) == 0x0110)
 
 
-#if 0
+/**
+ * The error response bit in the message type.
+ */
+#define PJ_STUN_ERROR_RESPONSE_BIT	(0x0110)
+
+
 /**
  * Determine if the message type is an indication message.
  */
-#define PJ_STUN_IS_INDICATION(msg_type)	(((msg_type) & 0x0FF0) == 0x0010)
-#endif
+#define PJ_STUN_IS_INDICATION(msg_type)	(((msg_type) & 0x0110) == 0x0010)
+
+
+/**
+ * The error response bit in the message type.
+ */
+#define PJ_STUN_INDICATION_BIT		(0x0010)
 
 
 /**
@@ -324,20 +339,33 @@ typedef enum pj_stun_attr_type
     PJ_STUN_ATTR_REALM		    = 0x0014,/**< REALM attribute.	    */
     PJ_STUN_ATTR_NONCE		    = 0x0015,/**< NONCE attribute.	    */
     PJ_STUN_ATTR_RELAY_ADDRESS	    = 0x0016,/**< RELAY-ADDRESS attribute.  */
+    PJ_STUN_ATTR_REQUESTED_ADDR_TYPE= 0x0017,/**< REQUESTED-ADDRESS-TYPE    */
     PJ_STUN_ATTR_REQUESTED_PORT_PROPS=0x0018,/**< REQUESTED-PORT-PROPS	    */
     PJ_STUN_ATTR_REQUESTED_TRANSPORT= 0x0019,/**< REQUESTED-TRANSPORT	    */
     PJ_STUN_ATTR_XOR_MAPPED_ADDRESS = 0x0020,/**< XOR-MAPPED-ADDRESS	    */
     PJ_STUN_ATTR_TIMER_VAL	    = 0x0021,/**< TIMER-VAL attribute.	    */
     PJ_STUN_ATTR_REQUESTED_IP	    = 0x0022,/**< REQUESTED-IP attribute    */
+    PJ_STUN_ATTR_XOR_REFLECTED_FROM = 0x0023,/**< XOR-REFLECTED-FROM	    */
+    PJ_STUN_ATTR_PRIORITY	    = 0x0024,/**< PRIORITY		    */
+    PJ_STUN_ATTR_USE_CANDIDATE	    = 0x0025,/**< USE-CANDIDATE		    */
+    PJ_STUN_ATTR_XOR_INTERNAL_ADDR  = 0x0026,/**< XOR-INTERNAL-ADDRESS	    */
+
+    PJ_STUN_ATTR_END_MANDATORY_ATTR,
+
+    PJ_STUN_ATTR_START_EXTENDED_ATTR= 0x8021,
+
     PJ_STUN_ATTR_FINGERPRINT	    = 0x8021,/**< FINGERPRINT attribute.    */
     PJ_STUN_ATTR_SERVER		    = 0x8022,/**< SERVER attribute.	    */
     PJ_STUN_ATTR_ALTERNATE_SERVER   = 0x8023,/**< ALTERNATE-SERVER.	    */
-    PJ_STUN_ATTR_REFRESH_INTERVAL   = 0x8024 /**< REFRESH-INTERVAL.	    */
+    PJ_STUN_ATTR_REFRESH_INTERVAL   = 0x8024,/**< REFRESH-INTERVAL.	    */
+
+    PJ_STUN_ATTR_END_EXTENDED_ATTR
+
 } pj_stun_attr_type;
 
 
 /**
- * STUN error codes.
+ * STUN error codes, which goes into STUN ERROR-CODE attribute.
  */
 typedef enum pj_stun_status
 {
@@ -490,38 +518,29 @@ typedef struct pj_stun_generic_ip_addr_attr
     pj_stun_attr_hdr	hdr;
 
     /**
-     * The first 8 bits of the attribute are ignored for the purposes
-     * of aligning parameters on natural 32 bit boundaries.
-     */
-    pj_uint8_t		ignored;
-
-    /**
-     * The address family can take on the following values:
-     * 
-     * 0x01:IPv4
-     * 0x02:IPv6
-     */
-    pj_uint8_t		family;
-
-    /**
-     * Port number.
-     */
-    pj_uint16_t		port;
-
-    /**
-     * The address.
+     * The socket address (as a union)
      */
     union {
-
-	/** IPv4 address. */
-	pj_uint32_t	ipv4;
-
-	/** IPv6 address. */
-	char		ipv6[1];
-
+	pj_sockaddr	    addr;   /**< Generic socket address.    */
+	pj_sockaddr_in	    ipv4;   /**< IPv4 socket address.	    */
+	pj_sockaddr_in6	    ipv6;   /**< IPv6 socket address.	    */
     } addr;
 
 } pj_stun_generic_ip_addr_attr;
+
+
+/**
+ * This structure represents a generic STUN attributes with no payload,
+ * and it is used for example by ICE USE-CANDIDATE attribute.
+ */
+typedef struct pj_stun_empty_attr
+{
+    /**
+     * Standard STUN attribute header.
+     */
+    pj_stun_attr_hdr	hdr;
+
+} pj_stun_empty_attr;
 
 
 /**
@@ -899,6 +918,24 @@ typedef struct pj_stun_generic_ip_addr_attr pj_stun_relay_addr_attr;
 
 
 /**
+ * This describes the REQUESTED-ADDRESS-TYPE attribute.
+ * The REQUESTED-ADDRESS-TYPE attribute is used by clients to request
+ * the allocation of a specific address type from a server.  The
+ * following is the format of the REQUESTED-ADDRESS-TYPE attribute.
+
+ \verbatim
+
+      0                   1                   2                   3
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |        Family                 |           Reserved            |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+ \endverbatim
+ */
+typedef struct pj_stun_generic_uint_attr pj_stun_requested_addr_type;
+
+/**
  * This describes the STUN REQUESTED-PORT-PROPS attribute.
  * This attribute allows the client to request certain properties for
  * the port that is allocated by the server.  The attribute can be used
@@ -935,6 +972,45 @@ typedef struct pj_stun_generic_uint_attr pj_stun_requested_transport_attr;
  */
 typedef struct pj_stun_generic_ip_addr_attr pj_stun_requested_ip_attr;
 
+/**
+ * This describes the XOR-REFLECTED-FROM attribute, as described by
+ * draft-macdonald-behave-nat-behavior-discovery-00.
+ * The XOR-REFLECTED-FROM attribute is used in place of the REFLECTED-
+ * FROM attribute.  It provides the same information, but because the
+ * NAT's public address is obfuscated through the XOR function, It can
+ * pass through a NAT that would otherwise attempt to translate it to
+ * the private network address.  XOR-REFLECTED-FROM has identical syntax
+ * to XOR-MAPPED-ADDRESS.
+ */
+typedef struct pj_stun_generic_ip_addr_attr pj_stun_xor_reflected_from_attr;
+
+/**
+ * This describes the PRIORITY attribute from draft-ietf-mmusic-ice-13.
+ * The PRIORITY attribute indicates the priority that is to be
+ * associated with a peer reflexive candidate, should one be discovered
+ * by this check.  It is a 32 bit unsigned integer, and has an attribute
+ * type of 0x0024.
+ */
+typedef struct pj_stun_generic_uint_attr pj_stun_priority_attr;
+
+/**
+ * This describes the USE-CANDIDATE attribute from draft-ietf-mmusic-ice-13.
+ * The USE-CANDIDATE attribute indicates that the candidate pair
+ * resulting from this check should be used for transmission of media.
+ * The attribute has no content (the Length field of the attribute is
+ * zero); it serves as a flag.
+ */
+typedef struct pj_stun_empty_attr pj_stun_use_candidate_attr;
+
+/**
+ * This structure describes STUN XOR-INTERNAL-ADDRESS attribute from
+ * draft-wing-behave-nat-control-stun-usage-00.
+ * This attribute MUST be present in a Binding Response and may be used
+ * in other responses as well.  This attribute is necessary to allow a
+ * STUN client to 'walk backwards' and communicate directly with all of
+ * the STUN-aware NATs along the path.
+ */
+typedef pj_stun_generic_ip_addr_attr pj_stun_xor_internal_addr_attr;
 
 /**
  * This describes the STUN TIMER-VAL attribute.
@@ -986,6 +1062,8 @@ PJ_DECL(pj_str_t) pj_stun_get_err_reason(int err_code);
  *
  * @param pool		Pool to create the STUN message.
  * @param msg_type	The 14bit message type.
+ * @param magic		Magic value to be put to the mesage; for requests,
+ *			the value should be PJ_STUN_MAGIC.
  * @param tsx_id	Optional transaction ID, or NULL to let the
  *			function generates a random transaction ID.
  * @param p_msg		Pointer to receive the message.
@@ -994,8 +1072,23 @@ PJ_DECL(pj_str_t) pj_stun_get_err_reason(int err_code);
  */
 PJ_DECL(pj_status_t) pj_stun_msg_create(pj_pool_t *pool,
 					unsigned msg_type,
+					pj_uint32_t magic,
 					const pj_uint8_t tsx_id[12],
 					pj_stun_msg **p_msg);
+
+
+/**
+ * Add STUN attribute to STUN message.
+ *
+ * @param msg		The STUN message.
+ * @param attr		The STUN attribute to be added to the message.
+ *
+ * @return		PJ_SUCCESS on success, or PJ_ETOOMANY if there are
+ *			already too many attributes in the message.
+ */
+PJ_DECL(pj_status_t) pj_stun_msg_add_attr(pj_stun_msg *msg,
+					  pj_stun_attr_hdr *attr);
+
 
 /**
  * Check that the PDU is potentially a valid STUN message. This function
@@ -1091,17 +1184,20 @@ PJ_DECL(pj_stun_attr_hdr*) pj_stun_msg_find_attr(const pj_stun_msg *msg,
  *
  * @param pool		The pool to allocate memory from.
  * @param attr_type	Attribute type.
- * @param ip_addr	IP address, in host byte order.
- * @param port		Port number, in host byte order.
+ * @param xor_ed	If non-zero, the port and address will be XOR-ed
+ *			with magic, to make the XOR-MAPPED-ADDRESS attribute.
+ * @param addr_len	Length of \a addr parameter.
+ * @param addr		A pj_sockaddr_in or pj_sockaddr_in6 structure.
  * @param p_attr	Pointer to receive the attribute.
  *
  * @return		PJ_SUCCESS on success or the appropriate error code.
  */
 PJ_DECL(pj_status_t) 
 pj_stun_generic_ip_addr_attr_create(pj_pool_t *pool,
-				    int attr_type,
-				    pj_uint32_t ip_addr,
-				    int port,
+				    int attr_type, 
+				    pj_bool_t xor_ed,
+				    unsigned addr_len,
+				    const pj_sockaddr_t *addr,
 				    pj_stun_generic_ip_addr_attr **p_attr);
 
 

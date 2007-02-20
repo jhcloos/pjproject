@@ -50,7 +50,7 @@ typedef struct pj_stun_service_handler
     /**
      * The STUN message type.
      */
-    int	     msg_type;
+    int		 msg_type;
 
     /** 
      * Callback to be called to handle this STUN message type.
@@ -58,7 +58,9 @@ typedef struct pj_stun_service_handler
      * @param svc   The service.
      * @param msg   The STUN message.
      */
-    void    (*handle_msg)(pj_stun_service *svc, const pj_stun_msg *msg);
+    pj_status_t	(*handle_msg)(pj_stun_service *svc, 
+			      void *handle_data,
+			      const pj_stun_msg *msg);
 
 } pj_stun_service_handler;
 
@@ -67,6 +69,8 @@ typedef struct pj_stun_service_handler
  * Create STUN service.
  */
 PJ_DECL(pj_status_t) pj_stun_service_create(pj_pool_t *pool,
+					    const char *name,
+					    unsigned options,
 					    unsigned handler_cnt,
 					    pj_stun_service_handler cb[],
 					    void *user_data,
@@ -88,6 +92,7 @@ PJ_DECL(void*) pj_stun_service_get_user_data(pj_stun_service *svc);
  * Instruct the STUN service to handle incoming STUN message.
  */
 PJ_DECL(pj_status_t) pj_stun_service_handle_msg(pj_stun_service *svc,
+						void *handle_data,
 						const pj_stun_msg *msg);
 
 

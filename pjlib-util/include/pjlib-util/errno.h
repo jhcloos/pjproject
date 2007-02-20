@@ -118,6 +118,11 @@
  * Transaction ID mismatch.
  */
 #define PJLIB_UTIL_ESTUNINVALIDID   (PJLIB_UTIL_ERRNO_START+16)	/* 320016 */
+/**
+ * @hideinitializer
+ * Unable to find handler for the request.
+ */
+#define PJLIB_UTIL_ESTUNNOHANDLER   (PJLIB_UTIL_ERRNO_START+17)	/* 320017 */
 
 
 #define PJ_STATUS_FROM_STUN_CODE(code)	-1

@@ -137,6 +137,10 @@ SOURCE="..\src\pjlib-util\stun_msg.c"
 # End Source File
 # Begin Source File
 
+SOURCE="..\src\pjlib-util\stun_server.c"
+# End Source File
+# Begin Source File
+
 SOURCE="..\src\pjlib-util\stun_simple.c"
 # PROP Exclude_From_Build 1
 # End Source File
