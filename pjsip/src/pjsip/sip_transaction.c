@@ -125,6 +125,8 @@ typedef struct tsx_lock_data {
 /* Timer timeout value constants */
 static const pj_time_val t1_timer_val = { PJSIP_T1_TIMEOUT/1000, 
                                           PJSIP_T1_TIMEOUT%1000 };
+static const pj_time_val t2_timer_val = { PJSIP_T2_TIMEOUT/1000, 
+                                          PJSIP_T2_TIMEOUT%1000 };
 static const pj_time_val t4_timer_val = { PJSIP_T4_TIMEOUT/1000, 
                                           PJSIP_T4_TIMEOUT%1000 };
 static const pj_time_val td_timer_val = { PJSIP_TD_TIMEOUT/1000, 
@@ -1703,7 +1705,12 @@ static void tsx_resched_retransmission( pjsip_transaction *tsx )
 
     pj_assert((tsx->transport_flag & TSX_HAS_PENDING_TRANSPORT) == 0);
 
-    msec_time = (1 << (tsx->retransmit_count)) * PJSIP_T1_TIMEOUT;
+    pj_assert(tsx->status_code < 200);
+
+    if (tsx->status_code >= 100)
+	msec_time = PJSIP_T2_TIMEOUT;
+    else
+	msec_time = (1 << (tsx->retransmit_count)) * PJSIP_T1_TIMEOUT;
 
     if (tsx->role == PJSIP_ROLE_UAC) {
 	/* Retransmission for non-INVITE transaction caps-off at T2 */
@@ -1878,25 +1885,57 @@ static pj_status_t tsx_on_state_calling( pjsip_transaction *tsx,
 
     } else if (event->type == PJSIP_EVENT_RX_MSG) {
 	pjsip_msg *msg;
-	//int code;
+	int code;
 
 	/* Get message instance */
 	msg = event->body.rx_msg.rdata->msg_info.msg;
 
-	/* Better be a response message. */
-	if (msg->type != PJSIP_RESPONSE_MSG)
-	    return PJSIP_ENOTRESPONSEMSG;
+	code = msg->line.status.code;
 
-	/* Cancel retransmission timer A. */
-	if (tsx->retransmit_timer._timer_id != -1) {
-	    pjsip_endpt_cancel_timer(tsx->endpt, &tsx->retransmit_timer);
-	    tsx->retransmit_timer._timer_id = -1;
+	/* If the response is final, cancel both retransmission and timeout
+	 * timer.
+	 */
+	if (code >= 200) {
+	    if (tsx->retransmit_timer._timer_id != -1) {
+		pjsip_endpt_cancel_timer(tsx->endpt, &tsx->retransmit_timer);
+		tsx->retransmit_timer._timer_id = -1;
+	    }
+
+	    if (tsx->timeout_timer._timer_id != -1) {
+		pjsip_endpt_cancel_timer(tsx->endpt, &tsx->timeout_timer);
+		tsx->timeout_timer._timer_id = -1;
+	    }
+
+	} else {
+	    /* Cancel retransmit timer (for non-INVITE transaction, the
+	     * retransmit timer will be rescheduled at T2.
+	     */
+	    if (tsx->retransmit_timer._timer_id != -1) {
+		pjsip_endpt_cancel_timer(tsx->endpt, &tsx->retransmit_timer);
+		tsx->retransmit_timer._timer_id = -1;
+	    }
+
+	    /* For provisional response, only cancel retransmit when this
+	     * is an INVITE transaction. For non-INVITE, section 17.1.2.1
+	     * of RFC 3261 says that:
+	     *	- retransmit timer is set to T2
+	     *	- timeout timer F is not deleted.
+	     */
+	    if (tsx->method.id == PJSIP_INVITE_METHOD) {
+
+		/* Cancel timeout timer */
+		pjsip_endpt_cancel_timer(tsx->endpt, &tsx->timeout_timer);
+
+	    } else {
+		if (!tsx->is_reliable) {
+		    pjsip_endpt_schedule_timer(tsx->endpt, 
+					       &tsx->retransmit_timer,
+					       &t2_timer_val);
+		}
+	    }
 	}
+ 
 	tsx->transport_flag &= ~(TSX_HAS_PENDING_RESCHED);
-
-
-	/* Cancel timer B (transaction timeout) */
-	pjsip_endpt_cancel_timer(tsx->endpt, &tsx->timeout_timer);
 
 	/* Discard retransmission message if it is not INVITE.
 	 * The INVITE tdata is needed in case we have to generate ACK for
@@ -2221,7 +2260,17 @@ static pj_status_t tsx_on_state_proceeding_uac(pjsip_transaction *tsx,
 
 	tsx->status_code = msg->line.status.code;
     } else {
-	tsx->status_code = PJSIP_SC_TSX_TIMEOUT;
+	if (event->body.timer.entry == &tsx->retransmit_timer) {
+	    /* Retransmit message. */
+            pj_status_t status;
+
+            status = tsx_retransmit( tsx, 1 );
+	    
+	    return status;
+
+	} else {
+	    tsx->status_code = PJSIP_SC_TSX_TIMEOUT;
+	}
     }
 
     if (PJSIP_IS_STATUS_IN_CLASS(tsx->status_code, 100)) {
@@ -2264,6 +2313,14 @@ static pj_status_t tsx_on_state_proceeding_uac(pjsip_transaction *tsx,
 	    tsx_set_state( tsx, PJSIP_TSX_STATE_COMPLETED, 
                            PJSIP_EVENT_RX_MSG, event->body.rx_msg.rdata );
 	}
+
+    } else if (event->type == PJSIP_EVENT_TIMER &&
+	       event->body.timer.entry == &tsx->timeout_timer) {
+
+	/* Inform TU. */
+	tsx_set_state( tsx, PJSIP_TSX_STATE_TERMINATED, 
+		       PJSIP_EVENT_TIMER, &tsx->timeout_timer);
+
 
     } else if (tsx->status_code >= 300 && tsx->status_code <= 699) {
 

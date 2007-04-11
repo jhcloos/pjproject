@@ -493,7 +493,7 @@ pj_status_t pjsua_init(void)
     /* Init memory pool: */
 
     /* Init caching pool. */
-    pj_caching_pool_init(&pjsua.cp, &pj_pool_factory_default_policy, 0);
+    pj_caching_pool_init(&pjsua.cp, pj_pool_factory_get_default_policy(), 0);
 
     /* Create memory pool for application. */
     pjsua.pool = pj_pool_create(&pjsua.cp.factory, "pjsua", 4000, 4000, NULL);

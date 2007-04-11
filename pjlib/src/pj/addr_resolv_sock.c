@@ -49,3 +49,64 @@ PJ_DEF(pj_status_t) pj_gethostbyname(const pj_str_t *hostname, pj_hostent *phe)
     return PJ_SUCCESS;
 }
 
+/* Resolve the IP address of local machine */
+PJ_DEF(pj_status_t) pj_gethostip(pj_in_addr *addr)
+{
+    const pj_str_t *hostname = pj_gethostname();
+    struct pj_hostent he;
+    pj_status_t status;
+
+
+#ifdef _MSC_VER
+    /* Get rid of "uninitialized he variable" with MS compilers */
+    pj_memset(&he, 0, sizeof(he));
+#endif
+
+    /* Try with resolving local hostname first */
+    status = pj_gethostbyname(hostname, &he);
+    if (status == PJ_SUCCESS) {
+	*addr = *(pj_in_addr*)he.h_addr;
+    }
+
+
+    /* If we end up with 127.x.x.x, resolve the IP by getting the default
+     * interface to connect to some public host.
+     */
+    if (status != PJ_SUCCESS || (pj_ntohl(addr->s_addr) >> 24)==127) {
+	pj_sock_t fd;
+	pj_str_t cp;
+	pj_sockaddr_in a;
+	int len;
+
+	status = pj_sock_socket(PJ_AF_INET, PJ_SOCK_DGRAM, 0, &fd);
+	if (status != PJ_SUCCESS) {
+	    return status;
+	}
+
+	cp = pj_str("1.1.1.1");
+	pj_sockaddr_in_init(&a, &cp, 53);
+
+	status = pj_sock_connect(fd, &a, sizeof(a));
+	if (status != PJ_SUCCESS) {
+	    pj_sock_close(fd);
+	    /* Return 127.0.0.1 as the address */
+	    return PJ_SUCCESS;
+	}
+
+	len = sizeof(a);
+	status = pj_sock_getsockname(fd, &a, &len);
+	if (status != PJ_SUCCESS) {
+	    pj_sock_close(fd);
+	    /* Return 127.0.0.1 as the address */
+	    return PJ_SUCCESS;
+	}
+
+	pj_sock_close(fd);
+
+	*addr = a.sin_addr;
+    }
+
+    return status;
+}
+
+
