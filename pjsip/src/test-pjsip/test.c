@@ -18,9 +18,9 @@
  */
 
 
-#include "test.h"
 #include <pjlib.h>
 #include <pjsip.h>
+#include "test.h"
 
 #define THIS_FILE   "test.c"
 
@@ -44,7 +44,7 @@ void app_perror(const char *msg, pj_status_t rc)
 
     PJ_CHECK_STACK();
 
-    pjsip_strerror(rc, errbuf, sizeof(errbuf));
+    pj_strerror(rc, errbuf, sizeof(errbuf));
     PJ_LOG(3,(THIS_FILE, "%s: [pj_status_t=%d] %s", msg, rc, errbuf));
 
 }
@@ -95,7 +95,7 @@ int test_main(void)
 
     pj_dump_config();
 
-    pj_caching_pool_init( &caching_pool, &pj_pool_factory_default_policy, 0 );
+    pj_caching_pool_init( &caching_pool, pj_pool_factory_get_default_policy(), 0 );
 
     rc = pjsip_endpt_create(&caching_pool.factory, "endpt", &endpt);
     if (rc != PJ_SUCCESS) {
@@ -111,7 +111,7 @@ int test_main(void)
     msg_logger_set_enabled(1);
 
     /* Start transaction layer module. */
-    rc = pjsip_tsx_layer_init(endpt);
+    rc = pjsip_tsx_layer_init_module(endpt);
     if (rc != PJ_SUCCESS) {
 	app_perror("   Error initializing transaction module", rc);
 	goto on_return;
@@ -126,7 +126,7 @@ int test_main(void)
     }
 
     //DO_TEST(uri_test());
-    //DO_TEST(msg_test());
+    DO_TEST(msg_test());
     //DO_TEST(txdata_test());
     //DO_TEST(transport_udp_test());
     //DO_TEST(transport_loop_test());

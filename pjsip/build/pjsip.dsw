@@ -105,7 +105,7 @@ Package=<4>
 
 ###############################################################################
 
-Project: "pjsua"=.\pjsua.dsp - Package Owner=<4>
+Project: "pjsua"="..\..\pjsip-apps\build\pjsua.dsp" - Package Owner=<4>
 
 Package=<5>
 {{{
@@ -169,6 +169,21 @@ Package=<4>
     End Project Dependency
     Begin Project Dependency
     Project_Dep_Name pjsip_core
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name pjlib_util
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name pjmedia
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name pjmedia_codec
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name pjsip_simple
+    End Project Dependency
+    Begin Project Dependency
+    Project_Dep_Name pjsip_ua
     End Project Dependency
 }}}
 
