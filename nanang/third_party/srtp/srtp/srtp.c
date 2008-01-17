@@ -483,7 +483,11 @@ srtp_stream_init(srtp_stream_ctx_t *srtp,
    key_limit_set(srtp->limit, temp);
 }
 #else
+#if _MSC_VER <= 1200
+   key_limit_set(srtp->limit, 0xffffffffffffI64);
+#else
    key_limit_set(srtp->limit, 0xffffffffffffLL);
+#endif
 #endif
 
    /* set the SSRC value */

@@ -161,11 +161,7 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="..\..\srtp\include\config.h"
-				>
-			</File>
-			<File
-				RelativePath=".\config_win32.h"
+				RelativePath=".\config.h"
 				>
 			</File>
 			<File
