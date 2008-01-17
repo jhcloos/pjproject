@@ -21,6 +21,7 @@
 #include <pjmedia/endpoint.h>
 #include <pjlib-util/base64.h>
 #include <pj/assert.h>
+#include <pj/lock.h>
 #include <pj/log.h>
 #include <pj/os.h>
 #include <pj/pool.h>
@@ -71,7 +72,7 @@ typedef struct transport_srtp
 {
     pjmedia_transport	 base;	    /**< Base transport interface. */
     pj_pool_t		*pool;
-    pj_mutex_t		*mutex;
+    pj_lock_t		*mutex;
     char		 tx_buffer[MAX_BUFFER_LEN];
     char		 rx_buffer[MAX_BUFFER_LEN];
     unsigned		 options;   /**< Transport options.	   */
@@ -173,12 +174,13 @@ char * octet_string_hex_string(const void *s, int length);
 
 static pj_status_t pjmedia_srtp_init_lib(void)
 {
-    err_status_t err;
     static pj_bool_t initialized = PJ_FALSE;
 
     if (initialized == PJ_FALSE) {
+	err_status_t err;
 	err = srtp_init();
 	if (err != err_status_ok) { 
+	    PJ_LOG(4, (THIS_FILE, "Failed to init libsrtp."));
 	    return SRTP_ERROR(err);
 	}
 
@@ -207,9 +209,8 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_create( pjmedia_endpt *endpt,
 
     /* Init libsrtp. */
     status = pjmedia_srtp_init_lib();
-    if (status != PJ_SUCCESS) {
+    if (status != PJ_SUCCESS)
 	return status;
-    }
 
     pool = pjmedia_endpt_create_pool(endpt, "srtp%p", 1000, 1000);
     srtp = PJ_POOL_ZALLOC_T(pool, transport_srtp);
@@ -219,7 +220,7 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_create( pjmedia_endpt *endpt,
     srtp->offerer_side = PJ_TRUE;
     srtp->options = options;
 
-    status = pj_mutex_create_recursive(pool, pool->obj_name, &srtp->mutex);
+    status = pj_lock_create_null_mutex(pool, pool->obj_name, &srtp->mutex);
     if (status != PJ_SUCCESS) {
 	pj_pool_release(pool);
 	return status;
@@ -258,7 +259,8 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_init_session(
     int		     crypto_suites_cnt;
 
     if (p_srtp->session_inited) {
-	return PJ_EEXISTS;
+	PJ_LOG(4, (THIS_FILE, "SRTP could not be re-init'd before deinit'd"));
+	return PJ_EINVALIDOP;
     }
 
     crypto_suites_cnt = sizeof(crypto_suites)/sizeof(crypto_suites[0]);
@@ -275,6 +277,7 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_init_session(
     }
 
     if ((cs_tx_idx == -1) || (cs_rx_idx == -1)) {
+	PJ_LOG(4, (THIS_FILE, "Crypto-suite specified is not supported."));
 	return PJ_ENOTSUP;
     }
 
@@ -329,9 +332,9 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_init_session(
     /* Declare SRTP session initialized */
     p_srtp->session_inited = PJ_TRUE;
 
-    PJ_LOG(3, (THIS_FILE, "TX %s key=%s", crypto_suites[cs_tx_idx].name,
+    PJ_LOG(5, (THIS_FILE, "TX %s key=%s", crypto_suites[cs_tx_idx].name,
 	   octet_string_hex_string(policy_tx->key.ptr, policy_tx->key.slen)));
-    PJ_LOG(3, (THIS_FILE, "RX %s key=%s", crypto_suites[cs_rx_idx].name,
+    PJ_LOG(5, (THIS_FILE, "RX %s key=%s", crypto_suites[cs_rx_idx].name,
 	   octet_string_hex_string(policy_rx->key.ptr, policy_rx->key.slen)));
 
     return PJ_SUCCESS;
@@ -351,13 +354,11 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_deinit_session(
 
     err = srtp_dealloc(p_srtp->srtp_rx_ctx);
     if (err != err_status_ok) {
-	PJ_TODO(LOG_ERROR_DEALLOC_RX);
-	//return SRTP_ERROR(err);
+	PJ_LOG(4, (THIS_FILE, "Failed to dealloc RX SRTP context"));
     }
     err = srtp_dealloc(p_srtp->srtp_tx_ctx);
     if (err != err_status_ok) {
-	PJ_TODO(LOG_ERROR_DEALLOC_TX);
-	//return SRTP_ERROR(err);
+	PJ_LOG(4, (THIS_FILE, "Failed to dealloc TX SRTP context"));
     }
 
     p_srtp->session_inited = PJ_FALSE;
@@ -401,9 +402,8 @@ static pj_status_t transport_attach(pjmedia_transport *tp,
     /* Attach itself to transport */
     status = pjmedia_transport_attach(srtp->real_tp, srtp, rem_addr, rem_rtcp,
 				      addr_len, &srtp_rtp_cb, &srtp_rtcp_cb);
-    if (status != PJ_SUCCESS) {
-	PJ_TODO(HANDLE_FAILURE);
-    }
+    if (status != PJ_SUCCESS)
+	return status;
 
     /* Save the callbacks */
     srtp->rtp_cb = rtp_cb;
@@ -442,7 +442,7 @@ static pj_status_t transport_send_rtp( pjmedia_transport *tp,
 
     PJ_ASSERT_RETURN(size < sizeof(srtp->tx_buffer), PJ_ETOOBIG);
 
-    pj_mutex_lock(srtp->mutex);
+    pj_lock_acquire(srtp->mutex);
     pj_memcpy(srtp->tx_buffer, pkt, size);
     
     err = srtp_protect(srtp->srtp_tx_ctx, srtp->tx_buffer, &len);
@@ -452,7 +452,7 @@ static pj_status_t transport_send_rtp( pjmedia_transport *tp,
 	status = SRTP_ERROR(err);
     }
     
-    pj_mutex_unlock(srtp->mutex);
+    pj_lock_release(srtp->mutex);
 
     return status;
 }
@@ -471,7 +471,7 @@ static pj_status_t transport_send_rtcp(pjmedia_transport *tp,
 
     PJ_ASSERT_RETURN((size) < sizeof(srtp->tx_buffer), PJ_ETOOBIG);
 
-    pj_mutex_lock(srtp->mutex);
+    pj_lock_acquire(srtp->mutex);
     pj_memcpy(srtp->tx_buffer, pkt, size);
 
     err = srtp_protect_rtcp(srtp->srtp_tx_ctx, srtp->tx_buffer, &len);
@@ -482,7 +482,7 @@ static pj_status_t transport_send_rtcp(pjmedia_transport *tp,
 	status = SRTP_ERROR(err);
     }
 
-    pj_mutex_unlock(srtp->mutex);
+    pj_lock_release(srtp->mutex);
 
     return status;
 }
@@ -501,6 +501,8 @@ static pj_status_t transport_destroy  (pjmedia_transport *tp)
     transport_srtp *srtp = (transport_srtp *) tp;
     pj_status_t status;
 
+    pj_lock_destroy(srtp->mutex);
+
     pjmedia_transport_detach(tp, NULL);
     
     if (srtp->options && PJMEDIA_SRTP_AUTO_CLOSE_UNDERLYING_TRANSPORT) {
@@ -508,13 +510,10 @@ static pj_status_t transport_destroy  (pjmedia_transport *tp)
     }
 
     status = pjmedia_transport_srtp_deinit_session(tp);
-    if (status != PJ_SUCCESS)
-	return status;
 
-    pj_mutex_destroy(srtp->mutex);
     pj_pool_release(srtp->pool);
 
-    return PJ_SUCCESS;
+    return status;
 }
 
 /*
@@ -530,21 +529,18 @@ static void srtp_rtp_cb( void *user_data, const void *pkt, pj_ssize_t size)
 	return;
     }
 
-    pj_mutex_lock(srtp->mutex);
+    pj_lock_acquire(srtp->mutex);
     pj_memcpy(srtp->rx_buffer, pkt, size);
 
     err = srtp_unprotect(srtp->srtp_rx_ctx, srtp->rx_buffer, &len);
     
-    /* unprotect should returns less (or same, if auth disabled) size */
-    PJ_TODO(CHECK_SIZE_AFTER_UNPROTECT);
-
     if (err == err_status_ok) {
 	srtp->rtp_cb(srtp->user_data, srtp->rx_buffer, len);
     } else {
-	PJ_TODO(LOG_ERROR_UNPROTECT);
+	PJ_LOG(5, (THIS_FILE, "Failed to unprotect SRTP"));
     }
 
-    pj_mutex_unlock(srtp->mutex);
+    pj_lock_release(srtp->mutex);
 }
 
 /*
@@ -560,21 +556,18 @@ static void srtp_rtcp_cb( void *user_data, const void *pkt, pj_ssize_t size)
 	return;
     }
 
-    pj_mutex_lock(srtp->mutex);
+    pj_lock_acquire(srtp->mutex);
     pj_memcpy(srtp->rx_buffer, pkt, size);
 
     err = srtp_unprotect_rtcp(srtp->srtp_rx_ctx, srtp->rx_buffer, &len);
 
-    /* unprotect should returns less (or same, if auth disabled) size */
-    PJ_TODO(CHECK_SIZE_AFTER_UNPROTECT);
-
     if (err == err_status_ok) {
 	srtp->rtcp_cb(srtp->user_data, srtp->rx_buffer, len);
     } else {
-	PJ_TODO(LOG_ERROR_UNPROTECT);
+	PJ_LOG(5, (THIS_FILE, "Failed to unprotect SRTCP"));
     }
     
-    pj_mutex_unlock(srtp->mutex);
+    pj_lock_release(srtp->mutex);
 }
 
 /* Generate crypto attribute, including crypto key.
@@ -779,7 +772,7 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
     if (pj_stricmp(&media_local->desc.transport, &ID_RTP_SAVP) ||
 	pj_stricmp(&media_remote->desc.transport, &ID_RTP_SAVP))
     {
-	return PJMEDIA_SDP_EINPROTO;
+	return PJMEDIA_SRTP_ESDPREQSECTP;
     }
 
     /*
@@ -799,8 +792,11 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
 	attr = NULL;
 	for (i=0; i<media_remote->attr_count; ++i) {
 	    if (!pj_stricmp2(&media_local->attr[i]->name, "crypto")) {
-		if (attr)
-		    return PJMEDIA_ERROR;
+		if (attr) {
+		    PJ_LOG(5,(THIS_FILE, "More than one crypto attr in " \
+					 "the SDP answer."));
+		    return PJMEDIA_SRTP_ESDPAMBIGUEANS;
+		}
 
 		attr = media_local->attr[i];
 	    }
@@ -989,9 +985,8 @@ static pj_status_t transport_media_stop(pjmedia_transport *tp)
     pj_status_t status;
 
     status = pjmedia_transport_srtp_deinit_session(tp);
-    if (status != PJ_SUCCESS) {
-	PJ_TODO(LOG_ERROR_DEINIT_SRTP);
-    }
+    if (status != PJ_SUCCESS)
+	PJ_LOG(4, (THIS_FILE, "Failed deinit session."));
 
     return pjmedia_transport_media_stop(srtp->real_tp);
 }

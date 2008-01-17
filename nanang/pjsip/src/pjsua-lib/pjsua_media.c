@@ -537,8 +537,7 @@ static pj_status_t create_udp_media_transports(pjsua_transport_config *cfg)
 
 	if (pjsua_var.media_cfg.enable_srtp) {
 	    pjmedia_transport *tp;
-	    unsigned srtp_options = 
-				PJMEDIA_SRTP_AUTO_CLOSE_UNDERLYING_TRANSPORT;
+	    unsigned srtp_options = 0;
 
 	    status = pjmedia_transport_udp_attach(pjsua_var.med_endpt, NULL,
 						  &skinfo, 0, &tp);
@@ -927,7 +926,8 @@ pj_status_t pjsua_media_channel_update(pjsua_call_id call_id,
     /* Find which session is audio (we only support audio for now) */
     for (i=0; i < sess_info.stream_cnt; ++i) {
 	if (sess_info.stream_info[i].type == PJMEDIA_TYPE_AUDIO &&
-	    sess_info.stream_info[i].proto == PJMEDIA_TP_PROTO_RTP_AVP)
+	    (sess_info.stream_info[i].proto == PJMEDIA_TP_PROTO_RTP_AVP ||
+	     sess_info.stream_info[i].proto == PJMEDIA_TP_PROTO_RTP_SAVP))
 	{
 	    si = &sess_info.stream_info[i];
 	    break;

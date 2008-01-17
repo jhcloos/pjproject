@@ -526,6 +526,22 @@ PJ_BEGIN_DECL
 #define PJMEDIA_ESNDINSAMPLEFMT	    (PJMEDIA_ERRNO_START+203)    /* 220203 */
 
 
+/************************************************************
+ * SRTP TRANSPORT ERRORS
+ ***********************************************************/
+/**
+ * @hideinitializer
+ * Secure transport required in SDP media descriptor.
+ */
+#define PJMEDIA_SRTP_ESDPREQSECTP   (PJMEDIA_ERRNO_START+220)    /* 220220 */
+/**
+ * @hideinitializer
+ * SDP contains ambigue answer.
+ */
+#define PJMEDIA_SRTP_ESDPAMBIGUEANS (PJMEDIA_ERRNO_START+221)    /* 220221 */
+
+
+
 /**
  * Get error message for the specified error code. Note that this
  * function is only able to decode PJMEDIA specific error code.

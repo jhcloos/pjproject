@@ -108,7 +108,7 @@ rand_source_get_octet_string(void *dest, uint32_t len) {
 #ifdef DEV_URANDOM
   if (read(dev_random_fdes, dest, len) != len)
     return err_status_fail;
-#elif (_MSC_VER >= 1400)
+#elif 0 && (_MSC_VER >= 1400)
   unsigned int *dst = dest;
   while (len)
   {

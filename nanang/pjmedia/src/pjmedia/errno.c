@@ -141,6 +141,11 @@ static const struct
     PJ_BUILD_ERR( PJMEDIA_ENOSNDPLAY,	    "No suitable sound playback device" ),
     PJ_BUILD_ERR( PJMEDIA_ESNDINDEVID,	    "Invalid sound device ID" ),
     PJ_BUILD_ERR( PJMEDIA_ESNDINSAMPLEFMT,  "Invalid sample format for sound device" ),
+
+    /* SRTP transport errors: */
+    PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPREQSECTP,   "Secure transport required in SDP media descriptor" ),
+    PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPAMBIGUEANS, "SDP contains ambigue answer" ),
+    
 };
 
 #endif	/* PJ_HAS_ERROR_STRING */
