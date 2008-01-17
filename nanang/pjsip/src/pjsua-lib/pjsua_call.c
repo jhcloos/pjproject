@@ -334,7 +334,7 @@ PJ_DEF(pj_status_t) pjsua_call_make_call( pjsua_acc_id acc_id,
 #if LATE_SDP
     offer = NULL;
 #else
-    status = pjsua_media_channel_create_sdp(call->index, dlg->pool, &offer);
+    status = pjsua_media_channel_create_sdp(call->index, dlg->pool, NULL, &offer);
     if (status != PJ_SUCCESS) {
 	pjsua_perror(THIS_FILE, "pjmedia unable to create SDP", status);
 	goto on_error;
@@ -481,7 +481,7 @@ pj_bool_t pjsua_call_on_incoming(pjsip_rx_data *rdata)
     int acc_id;
     pjsua_call *call;
     int call_id = -1;
-    pjmedia_sdp_session *answer;
+    pjmedia_sdp_session *offer, *answer;
     pj_status_t status;
 
     /* Don't want to handle anything but INVITE */
@@ -589,9 +589,26 @@ pj_bool_t pjsua_call_on_incoming(pjsip_rx_data *rdata)
 	return PJ_TRUE;
     }
 
+    /* Parse SDP from incoming request */
+    if (rdata->msg_info.msg->body) {
+	status = pjmedia_sdp_parse(rdata->tp_info.pool, 
+				   rdata->msg_info.msg->body->data,
+				   rdata->msg_info.msg->body->len, &offer);
+	if (status != PJ_SUCCESS) {
+	    pjsua_perror(THIS_FILE, "Error parsing SDP in incoming INVITE", status);
+	    pjsip_endpt_respond_stateless(pjsua_var.endpt, rdata, 400, NULL,
+					  NULL, NULL);
+	    pjsua_media_channel_deinit(call->index);
+	    PJSUA_UNLOCK();
+	    return PJ_TRUE;
+	}
+    } else {
+	offer = NULL;
+    }
 
     /* Get media capability from media endpoint: */
-    status = pjsua_media_channel_create_sdp(call->index, rdata->tp_info.pool, &answer);
+    status = pjsua_media_channel_create_sdp(call->index, rdata->tp_info.pool, 
+					    offer, &answer);
     if (status != PJ_SUCCESS) {
 	pjsip_endpt_respond_stateless(pjsua_var.endpt, rdata, 500, NULL,
 				      NULL, NULL);
@@ -612,8 +629,8 @@ pj_bool_t pjsua_call_on_incoming(pjsip_rx_data *rdata)
     if (pjsua_var.acc[acc_id].cfg.require_100rel)
 	options |= PJSIP_INV_REQUIRE_100REL;
 
-    status = pjsip_inv_verify_request(rdata, &options, answer, NULL,
-				      pjsua_var.endpt, &response);
+    status = pjsip_inv_verify_request2(rdata, &options, offer, answer, NULL,
+				       pjsua_var.endpt, &response);
     if (status != PJ_SUCCESS) {
 
 	/*
@@ -1313,7 +1330,8 @@ PJ_DEF(pj_status_t) pjsua_call_reinvite( pjsua_call_id call_id,
     /* Create SDP */
     PJ_UNUSED_ARG(unhold);
     PJ_TODO(create_active_inactive_sdp_based_on_unhold_arg);
-    status = pjsua_media_channel_create_sdp(call->index, call->inv->pool, &sdp);
+    status = pjsua_media_channel_create_sdp(call->index, call->inv->pool, 
+					    NULL, &sdp);
     if (status != PJ_SUCCESS) {
 	pjsua_perror(THIS_FILE, "Unable to get SDP from media endpoint", 
 		     status);
@@ -1379,7 +1397,8 @@ PJ_DEF(pj_status_t) pjsua_call_update( pjsua_call_id call_id,
     }
 
     /* Create SDP */
-    status = pjsua_media_channel_create_sdp(call->index, call->inv->pool, &sdp);
+    status = pjsua_media_channel_create_sdp(call->index, call->inv->pool, 
+					    NULL, &sdp);
     if (status != PJ_SUCCESS) {
 	pjsua_perror(THIS_FILE, "Unable to get SDP from media endpoint", 
 		     status);
@@ -2320,7 +2339,7 @@ static void pjsua_call_on_media_update(pjsip_inv_session *inv,
 				       pj_status_t status)
 {
     pjsua_call *call;
-    const pjmedia_sdp_session *local_sdp;
+    pjmedia_sdp_session *local_sdp;
     const pjmedia_sdp_session *remote_sdp;
 
     PJSUA_LOCK();
@@ -2501,7 +2520,8 @@ static void pjsua_call_on_rx_offer(pjsip_inv_session *inv,
 	    return;
 	}
 
-	status = pjsua_media_channel_create_sdp(call->index, call->inv->pool, &answer);
+	status = pjsua_media_channel_create_sdp(call->index, call->inv->pool, 
+					        offer, &answer);
     }
 
     if (status != PJ_SUCCESS) {
@@ -2553,7 +2573,8 @@ static void pjsua_call_on_create_offer(pjsip_inv_session *inv,
 	    return;
 	}
 
-	status = pjsua_media_channel_create_sdp(call->index, call->inv->pool, offer);
+	status = pjsua_media_channel_create_sdp(call->index, call->inv->pool, 
+					        NULL, offer);
     }
 
     if (status != PJ_SUCCESS) {

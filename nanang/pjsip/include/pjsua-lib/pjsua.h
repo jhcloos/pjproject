@@ -3768,6 +3768,11 @@ struct pjsua_media_config
      * Enable ICE media relay.
      */
     pj_bool_t		enable_relay;
+
+    /**
+     * Enable SRTP
+     */
+    pj_bool_t		enable_srtp;
 };
 
 

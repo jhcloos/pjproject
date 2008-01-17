@@ -165,6 +165,7 @@ static void usage(void)
     puts  ("");
     puts  ("Media Options:");
     puts  ("  --use-ice           Enable ICE (default:no)");
+    puts  ("  --use-srtp          Enable SRTP (default:no)");
     puts  ("  --add-codec=name    Manually add codec (default is to enable all)");
     puts  ("  --dis-codec=name    Disable codec (can be specified multiple times)");
     puts  ("  --clock-rate=N      Override sound device clock rate");
@@ -382,7 +383,7 @@ static pj_status_t parse_args(int argc, char *argv[],
 	   OPT_NAMESERVER, OPT_STUN_DOMAIN, OPT_STUN_SRV,
 	   OPT_ADD_BUDDY, OPT_OFFER_X_MS_MSG, OPT_NO_PRESENCE,
 	   OPT_AUTO_ANSWER, OPT_AUTO_HANGUP, OPT_AUTO_PLAY, OPT_AUTO_LOOP,
-	   OPT_AUTO_CONF, OPT_CLOCK_RATE, OPT_USE_ICE,
+	   OPT_AUTO_CONF, OPT_CLOCK_RATE, OPT_USE_ICE, OPT_USE_SRTP,
 	   OPT_PLAY_FILE, OPT_PLAY_TONE, OPT_RTP_PORT, OPT_ADD_CODEC, 
 	   OPT_ILBC_MODE, OPT_REC_FILE, OPT_AUTO_REC,
 	   OPT_COMPLEXITY, OPT_QUALITY, OPT_PTIME, OPT_NO_VAD,
@@ -441,6 +442,7 @@ static pj_status_t parse_args(int argc, char *argv[],
 	{ "rec-file",   1, 0, OPT_REC_FILE},
 	{ "rtp-port",	1, 0, OPT_RTP_PORT},
 	{ "use-ice",    0, 0, OPT_USE_ICE},
+	{ "use-srtp",   0, 0, OPT_USE_SRTP},
 	{ "add-codec",  1, 0, OPT_ADD_CODEC},
 	{ "dis-codec",  1, 0, OPT_DIS_CODEC},
 	{ "complexity",	1, 0, OPT_COMPLEXITY},
@@ -794,6 +796,10 @@ static pj_status_t parse_args(int argc, char *argv[],
 
 	case OPT_USE_ICE:
 	    cfg->media_cfg.enable_ice = PJ_TRUE;
+	    break;
+
+	case OPT_USE_SRTP:
+	    cfg->media_cfg.enable_srtp = PJ_TRUE;
 	    break;
 
 	case OPT_RTP_PORT:

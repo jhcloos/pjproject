@@ -534,22 +534,35 @@ static pj_status_t create_udp_media_transports(pjsua_transport_config *cfg)
 		         status);
 	    goto on_error;
 	}
-	status = pjmedia_transport_udp_attach(pjsua_var.med_endpt, NULL,
-					      &skinfo, 0,
-					      &pjsua_var.calls[i].med_tp);
+
+	if (pjsua_var.media_cfg.enable_srtp) {
+	    pjmedia_transport *tp;
+	    unsigned srtp_options = 
+				PJMEDIA_SRTP_AUTO_CLOSE_UNDERLYING_TRANSPORT;
+
+	    status = pjmedia_transport_udp_attach(pjsua_var.med_endpt, NULL,
+						  &skinfo, 0, &tp);
+	    status = pjmedia_transport_srtp_create(pjsua_var.med_endpt, tp,
+						   srtp_options, 
+						   &pjsua_var.calls[i].med_tp);
+	} else {
+	    status = pjmedia_transport_udp_attach(pjsua_var.med_endpt, NULL,
+						  &skinfo, 0,
+						  &pjsua_var.calls[i].med_tp);
+	}
 	if (status != PJ_SUCCESS) {
 	    pjsua_perror(THIS_FILE, "Unable to create media transport",
 		         status);
 	    goto on_error;
 	}
 
-	pjmedia_transport_udp_simulate_lost(pjsua_var.calls[i].med_tp,
-					    PJMEDIA_DIR_ENCODING,
-					    pjsua_var.media_cfg.tx_drop_pct);
+	pjmedia_transport_simulate_lost(pjsua_var.calls[i].med_tp,
+					PJMEDIA_DIR_ENCODING,
+					pjsua_var.media_cfg.tx_drop_pct);
 
-	pjmedia_transport_udp_simulate_lost(pjsua_var.calls[i].med_tp,
-					    PJMEDIA_DIR_DECODING,
-					    pjsua_var.media_cfg.rx_drop_pct);
+	pjmedia_transport_simulate_lost(pjsua_var.calls[i].med_tp,
+					PJMEDIA_DIR_DECODING,
+					pjsua_var.media_cfg.rx_drop_pct);
 
     }
 
@@ -645,13 +658,13 @@ static pj_status_t create_ice_media_transports(pjsua_transport_config *cfg)
 	    goto on_error;
 	}
 
-	pjmedia_ice_simulate_lost(pjsua_var.calls[i].med_tp,
-				  PJMEDIA_DIR_ENCODING,
-				  pjsua_var.media_cfg.tx_drop_pct);
+	pjmedia_transport_simulate_lost(pjsua_var.calls[i].med_tp,
+				        PJMEDIA_DIR_ENCODING,
+				        pjsua_var.media_cfg.tx_drop_pct);
 
-	pjmedia_ice_simulate_lost(pjsua_var.calls[i].med_tp,
-				  PJMEDIA_DIR_DECODING,
-				  pjsua_var.media_cfg.rx_drop_pct);
+	pjmedia_transport_simulate_lost(pjsua_var.calls[i].med_tp,
+				        PJMEDIA_DIR_DECODING,
+				        pjsua_var.media_cfg.rx_drop_pct);
 
 	status = pjmedia_ice_start_init(pjsua_var.calls[i].med_tp, 0, &addr,
 				        &pjsua_var.stun_srv.ipv4, NULL);
@@ -756,7 +769,7 @@ pj_status_t pjsua_media_channel_init(pjsua_call_id call_id,
 				           PJ_ICE_SESS_ROLE_CONTROLLED);
 
 	/* Restart ICE */
-	pjmedia_ice_stop_ice(call->med_tp);
+	pjmedia_transport_media_stop(call->med_tp);
 
 	status = pjmedia_ice_init_ice(call->med_tp, ice_role, NULL, NULL);
 	if (status != PJ_SUCCESS)
@@ -768,6 +781,7 @@ pj_status_t pjsua_media_channel_init(pjsua_call_id call_id,
 
 pj_status_t pjsua_media_channel_create_sdp(pjsua_call_id call_id, 
 					   pj_pool_t *pool,
+					   const pjmedia_sdp_session *rem_sdp,
 					   pjmedia_sdp_session **p_sdp)
 {
     pjmedia_sdp_session *sdp;
@@ -815,11 +829,13 @@ pj_status_t pjsua_media_channel_create_sdp(pjsua_call_id call_id,
 
     }
 
-    if (pjsua_var.media_cfg.enable_ice) {
-	status = pjmedia_ice_modify_sdp(call->med_tp, pool, sdp);
+    //if (pjsua_var.media_cfg.enable_ice) {
+	//status = pjmedia_transport_media_create(call->med_tp, pool, sdp, NULL);
+	status = pjmedia_transport_media_create(call->med_tp, pool, 
+						sdp, rem_sdp);
 	if (status != PJ_SUCCESS)
 	    goto on_error;
-    }
+    //}
 
     *p_sdp = sdp;
     return PJ_SUCCESS;
@@ -858,9 +874,9 @@ pj_status_t pjsua_media_channel_deinit(pjsua_call_id call_id)
 
     stop_media_session(call_id);
 
-    if (pjsua_var.media_cfg.enable_ice) {
-	pjmedia_ice_stop_ice(call->med_tp);
-    }
+    //if (pjsua_var.media_cfg.enable_ice) {
+	pjmedia_transport_media_stop(call->med_tp);
+    //}
 
     return PJ_SUCCESS;
 }
@@ -884,7 +900,7 @@ static void dtmf_callback(pjmedia_stream *strm, void *user_data,
 
 
 pj_status_t pjsua_media_channel_update(pjsua_call_id call_id,
-				       const pjmedia_sdp_session *local_sdp,
+				       pjmedia_sdp_session *local_sdp,
 				       const pjmedia_sdp_session *remote_sdp)
 {
     unsigned i;
@@ -946,20 +962,21 @@ pj_status_t pjsua_media_channel_update(pjsua_call_id call_id,
 	call->media_dir = PJMEDIA_DIR_NONE;
 
 	/* Shutdown ICE session */
-	if (pjsua_var.media_cfg.enable_ice) {
-	    pjmedia_ice_stop_ice(call->med_tp);
-	}
+	//if (pjsua_var.media_cfg.enable_ice) {
+	    pjmedia_transport_media_stop(call->med_tp);
+	//}
 
 	/* No need because we need keepalive? */
 
     } else {
 	/* Start ICE */
-	if (pjsua_var.media_cfg.enable_ice) {
-	    status = pjmedia_ice_start_ice(call->med_tp, call->inv->pool, 
-					   remote_sdp, 0);
+	//if (pjsua_var.media_cfg.enable_ice) {
+	    status = pjmedia_transport_media_start(call->med_tp, 
+						   call->inv->pool,
+						   local_sdp, remote_sdp, 0);
 	    if (status != PJ_SUCCESS)
 		return status;
-	}
+	//}
 
 	/* Override ptime, if this option is specified. */
 	if (pjsua_var.media_cfg.ptime != 0) {
