@@ -108,7 +108,7 @@ rand_source_get_octet_string(void *dest, uint32_t len) {
 #ifdef DEV_URANDOM
   if (read(dev_random_fdes, dest, len) != len)
     return err_status_fail;
-#elif 0 && (_MSC_VER >= 1400)
+#elif 0 && (_MSC_VER >= 1400) /* disabled rand_s, causing assertion 'rand_s not supported' in vs8 */
   unsigned int *dst = dest;
   while (len)
   {
