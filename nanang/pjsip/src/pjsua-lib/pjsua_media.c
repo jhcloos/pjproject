@@ -535,20 +535,9 @@ static pj_status_t create_udp_media_transports(pjsua_transport_config *cfg)
 	    goto on_error;
 	}
 
-	if (pjsua_var.media_cfg.enable_srtp) {
-	    pjmedia_transport *tp;
-	    unsigned srtp_options = 0;
-
-	    status = pjmedia_transport_udp_attach(pjsua_var.med_endpt, NULL,
-						  &skinfo, 0, &tp);
-	    status = pjmedia_transport_srtp_create(pjsua_var.med_endpt, tp,
-						   srtp_options, 
-						   &pjsua_var.calls[i].med_tp);
-	} else {
-	    status = pjmedia_transport_udp_attach(pjsua_var.med_endpt, NULL,
-						  &skinfo, 0,
-						  &pjsua_var.calls[i].med_tp);
-	}
+	status = pjmedia_transport_udp_attach(pjsua_var.med_endpt, NULL,
+					      &skinfo, 0,
+					      &pjsua_var.calls[i].med_tp);
 	if (status != PJ_SUCCESS) {
 	    pjsua_perror(THIS_FILE, "Unable to create media transport",
 		         status);
@@ -756,23 +745,44 @@ PJ_DEF(pj_status_t) pjsua_media_transports_create(
 
 
 pj_status_t pjsua_media_channel_init(pjsua_call_id call_id,
-				     pjsip_role_e role)
+				     pjsip_role_e role,
+				     int security_level)
 {
     pjsua_call *call = &pjsua_var.calls[call_id];
+    pjsua_acc *acc = &pjsua_var.acc[call->acc_id];
+    pjmedia_srtp_use use_srtp;
 
-    if (pjsua_var.media_cfg.enable_ice) {
-	pj_ice_sess_role ice_role;
+    PJ_UNUSED_ARG(role);
+
+    /* Return error if media transport has not been created yet
+     * (e.g. application is starting)
+     */
+    if (call->med_tp == NULL) {
+	return PJ_EBUSY;
+    }
+
+    /* Stop media transport (for good measure!) */
+    pjmedia_transport_media_stop(call->med_tp);
+    
+    /* See if we need to use SRTP */
+    use_srtp = acc->cfg.use_srtp;
+    if (use_srtp != PJMEDIA_SRTP_DISABLED) {
 	pj_status_t status;
+	pjmedia_transport *srtp;
 
-	ice_role = (role==PJSIP_ROLE_UAC ? PJ_ICE_SESS_ROLE_CONTROLLING : 
-				           PJ_ICE_SESS_ROLE_CONTROLLED);
+	if (security_level < acc->cfg.srtp_secure_signaling) {
+	    return PJSIP_ESESSIONINSECURE;
+	}
 
-	/* Restart ICE */
-	pjmedia_transport_media_stop(call->med_tp);
-
-	status = pjmedia_ice_init_ice(call->med_tp, ice_role, NULL, NULL);
+	/* Create SRTP */
+	status = pjmedia_transport_srtp_create(pjsua_var.med_endpt, 
+					       call->med_tp,
+					       NULL, &srtp);
 	if (status != PJ_SUCCESS)
 	    return status;
+
+	/* Set SRTP as current media transport */
+	call->med_tp = srtp;
     }
 
     return PJ_SUCCESS;
@@ -783,6 +793,7 @@ pj_status_t pjsua_media_channel_create_sdp(pjsua_call_id call_id,
 					   const pjmedia_sdp_session *rem_sdp,
 					   pjmedia_sdp_session **p_sdp)
 {
+    enum { MAX_MEDIA = 1, MEDIA_IDX = 0 };
     pjmedia_sdp_session *sdp;
     pjmedia_sock_info skinfo;
     pjsua_call *call = &pjsua_var.calls[call_id];
@@ -799,7 +810,7 @@ pj_status_t pjsua_media_channel_create_sdp(pjsua_call_id call_id,
     pjmedia_transport_get_info(call->med_tp, &skinfo);
 
     /* Create SDP */
-    status = pjmedia_endpt_create_sdp(pjsua_var.med_endpt, pool, 1,
+    status = pjmedia_endpt_create_sdp(pjsua_var.med_endpt, pool, MAX_MEDIA,
 				      &skinfo, &sdp);
     if (status != PJ_SUCCESS)
 	goto on_error;
@@ -828,13 +839,11 @@ pj_status_t pjsua_media_channel_create_sdp(pjsua_call_id call_id,
 
     }
 
-    //if (pjsua_var.media_cfg.enable_ice) {
-	//status = pjmedia_transport_media_create(call->med_tp, pool, sdp, NULL);
-	status = pjmedia_transport_media_create(call->med_tp, pool, 
-						sdp, rem_sdp);
-	if (status != PJ_SUCCESS)
-	    goto on_error;
-    //}
+    /* Give the SDP to media transport */
+    status = pjmedia_transport_media_create(call->med_tp, pool, 
+					    sdp, rem_sdp, MEDIA_IDX);
+    if (status != PJ_SUCCESS)
+	goto on_error;
 
     *p_sdp = sdp;
     return PJ_SUCCESS;
@@ -873,10 +882,12 @@ pj_status_t pjsua_media_channel_deinit(pjsua_call_id call_id)
 
     stop_media_session(call_id);
 
-    //if (pjsua_var.media_cfg.enable_ice) {
-	pjmedia_transport_media_stop(call->med_tp);
-    //}
+    pjmedia_transport_media_stop(call->med_tp);
 
+    if (call->med_tp != call->med_orig) {
+	pjmedia_transport_close(call->med_tp);
+	call->med_tp = call->med_orig;
+    }
     return PJ_SUCCESS;
 }
 
@@ -961,22 +972,18 @@ pj_status_t pjsua_media_channel_update(pjsua_call_id call_id,
 
 	call->media_dir = PJMEDIA_DIR_NONE;
 
-	/* Shutdown ICE session */
-	//if (pjsua_var.media_cfg.enable_ice) {
-	    pjmedia_transport_media_stop(call->med_tp);
-	//}
+	/* Shutdown transport's session */
+	pjmedia_transport_media_stop(call->med_tp);
 
 	/* No need because we need keepalive? */
 
     } else {
-	/* Start ICE */
-	//if (pjsua_var.media_cfg.enable_ice) {
-	    status = pjmedia_transport_media_start(call->med_tp, 
-						   call->inv->pool,
-						   local_sdp, remote_sdp, 0);
-	    if (status != PJ_SUCCESS)
-		return status;
-	//}
+	/* Start media transport */
+	status = pjmedia_transport_media_start(call->med_tp, 
+					       call->inv->pool,
+					       local_sdp, remote_sdp, 0);
+	if (status != PJ_SUCCESS)
+	    return status;
 
 	/* Override ptime, if this option is specified. */
 	if (pjsua_var.media_cfg.ptime != 0) {

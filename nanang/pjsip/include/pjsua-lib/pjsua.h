@@ -1971,6 +1971,29 @@ typedef struct pjsua_acc_config
      */
     pj_str_t	     ka_data;
 
+    /**
+     * Specify whether secure media transport should be used for this account.
+     * Valid values are PJMEDIA_SRTP_DISABLED, PJMEDIA_SRTP_OPTIONAL, and
+     * PJMEDIA_SRTP_MANDATORY.
+     *
+     * Default:
+     *	PJMEDIA_SRTP_DISABLED
+     */
+    pjmedia_srtp_use	use_srtp;
+
+    /**
+     * Specify whether SRTP requires secure signaling to be used. This option
+     * is only used when \a use_srtp option above is non-zero.
+     *
+     * Valid values are:
+     *	0: SRTP does not require secure signaling
+     *	1: SRTP requires secure transport such as TLS
+     *	2: SRTP requires secure end-to-end transport (SIPS)
+     *
+     * Default: 0
+     */
+    int		     srtp_secure_signaling;
+
 } pjsua_acc_config;
 
 
@@ -3768,11 +3791,6 @@ struct pjsua_media_config
      * Enable ICE media relay.
      */
     pj_bool_t		enable_relay;
-
-    /**
-     * Enable SRTP
-     */
-    pj_bool_t		enable_srtp;
 };
 
 
