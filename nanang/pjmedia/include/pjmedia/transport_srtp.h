@@ -53,7 +53,7 @@ typedef struct pjmedia_srtp_crypto
     pj_str_t	key;
 
     /** Crypto name.   */
-    pj_str_t	crypto;
+    pj_str_t	name;
 
     /* Flags, bitmask from #pjmedia_srtp_crypto_option */
     unsigned	flags;
@@ -168,7 +168,7 @@ PJ_DECL(pj_status_t) pjmedia_transport_srtp_create(
  * @return	    PJ_SUCCESS on success.
  */
 PJ_DECL(pj_status_t) pjmedia_transport_srtp_start(
-					    pjmedia_transport *srtp,
+					    pjmedia_transport *tp,
 					    const pjmedia_srtp_crypto *tx,
 					    const pjmedia_srtp_crypto *rx);
 
@@ -181,7 +181,7 @@ PJ_DECL(pj_status_t) pjmedia_transport_srtp_start(
  *
  * @see #pjmedia_transport_srtp_start() 
  */
-PJ_DECL(pj_status_t) pjmedia_transport_srtp_stop(pjmedia_transport *srtp);
+PJ_DECL(pj_status_t) pjmedia_transport_srtp_stop(pjmedia_transport *tp);
 
 
 /**
@@ -192,7 +192,7 @@ PJ_DECL(pj_status_t) pjmedia_transport_srtp_stop(pjmedia_transport *srtp);
  * @return		    member media transport.
  */
 PJ_DECL(pjmedia_transport*) pjmedia_transport_srtp_get_member(
-						    pjmedia_transport *srtp);
+						    pjmedia_transport *tp);
 
 
 PJ_END_DECL
