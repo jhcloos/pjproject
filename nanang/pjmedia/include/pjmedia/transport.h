@@ -254,7 +254,8 @@ struct pjmedia_transport_op
     pj_status_t (*media_create)(pjmedia_transport *tp,
 				pj_pool_t *pool,
 				pjmedia_sdp_session *sdp_local,
-				const pjmedia_sdp_session *sdp_remote);
+				const pjmedia_sdp_session *sdp_remote,
+				unsigned media_index);
 
     /**
      * This function is called by application to start the transport
@@ -470,9 +471,11 @@ PJ_INLINE(pj_status_t) pjmedia_transport_send_rtcp(pjmedia_transport *tp,
 PJ_INLINE(pj_status_t) pjmedia_transport_media_create(pjmedia_transport *tp,
 				    pj_pool_t *pool,
 				    pjmedia_sdp_session *sdp_local,
-				    const pjmedia_sdp_session *sdp_remote)
+				    const pjmedia_sdp_session *sdp_remote,
+				    unsigned media_index)
 {
-    return (*tp->op->media_create)(tp, pool, sdp_local, sdp_remote);
+    return (*tp->op->media_create)(tp, pool, sdp_local, sdp_remote, 
+				   media_index);
 }
 
 /**

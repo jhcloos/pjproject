@@ -77,13 +77,14 @@ typedef struct transport_srtp
     char		 rx_buffer[MAX_BUFFER_LEN];
     unsigned		 options;   /**< Transport options.	   */
 
+    pjmedia_srtp_setting setting;
     /* SRTP policy */
     pj_bool_t		 session_inited;
     pj_bool_t		 offerer_side;
     char		 tx_key[MAX_KEY_LEN];
     char		 rx_key[MAX_KEY_LEN];
-    pjmedia_srtp_stream_policy tx_policy;
-    pjmedia_srtp_stream_policy rx_policy;
+    pjmedia_srtp_stream_crypto tx_policy;
+    pjmedia_srtp_stream_crypto rx_policy;
 
     /* libSRTP contexts */
     srtp_t		 srtp_tx_ctx;
@@ -244,10 +245,10 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_create( pjmedia_endpt *endpt,
 /*
  * Initialize and start SRTP session with the given parameters.
  */
-PJ_DEF(pj_status_t) pjmedia_transport_srtp_init_session(
+PJ_DEF(pj_status_t) pjmedia_transport_srtp_start(
 			   pjmedia_transport *srtp, 
-			   const pjmedia_srtp_stream_policy *policy_tx,
-			   const pjmedia_srtp_stream_policy *policy_rx)
+			   const pjmedia_srtp_stream_crypto *policy_tx,
+			   const pjmedia_srtp_stream_crypto *policy_rx)
 {
     transport_srtp  *p_srtp = (transport_srtp*) srtp;
     srtp_policy_t    policy_tx_;
@@ -343,8 +344,7 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_init_session(
 /*
  * Stop SRTP session.
  */
-PJ_DEF(pj_status_t) pjmedia_transport_srtp_deinit_session(
-					    pjmedia_transport *srtp)
+PJ_DEF(pj_status_t) pjmedia_transport_srtp_stop(pjmedia_transport *srtp)
 {
     transport_srtp *p_srtp = (transport_srtp*) srtp;
     err_status_t err;
@@ -366,8 +366,8 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_deinit_session(
     return PJ_SUCCESS;
 }
 
-PJ_DEF(pjmedia_transport *) pjmedia_transport_srtp_get_real_transport(
-				    pjmedia_transport *tp)
+PJ_DEF(pjmedia_transport *) pjmedia_transport_srtp_get_member(
+						pjmedia_transport *tp)
 {
     transport_srtp *srtp = (transport_srtp*) tp;
 
@@ -505,11 +505,11 @@ static pj_status_t transport_destroy  (pjmedia_transport *tp)
 
     pjmedia_transport_detach(tp, NULL);
     
-    if (srtp->options && PJMEDIA_SRTP_AUTO_CLOSE_UNDERLYING_TRANSPORT) {
+    if (srtp->setting.close_member_tp) {
 	pjmedia_transport_close(srtp->real_tp);
     }
 
-    status = pjmedia_transport_srtp_deinit_session(tp);
+    status = pjmedia_transport_srtp_stop(tp);
 
     pj_pool_release(srtp->pool);
 
@@ -691,7 +691,7 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 /* Parse crypto attribute line */
 static pj_status_t parse_attr_crypto(pj_pool_t *pool,
 				     const pjmedia_sdp_attr *attr,
-				     pjmedia_srtp_stream_policy *policy,
+				     pjmedia_srtp_stream_crypto *policy,
 				     int *tag)
 {
     pj_str_t input;
@@ -748,8 +748,8 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
     pjmedia_sdp_media *media_remote = sdp_remote->media[media_index];
     pjmedia_sdp_media *media_local  = sdp_local->media[media_index];
     pjmedia_sdp_attr *attr;
-    pjmedia_srtp_stream_policy policy_remote;
-    pjmedia_srtp_stream_policy policy_local;
+    pjmedia_srtp_stream_crypto policy_remote;
+    pjmedia_srtp_stream_crypto policy_local;
     pj_status_t status;
     unsigned cs_cnt = sizeof(crypto_suites)/sizeof(crypto_suites[0]);
     int cs_tag = -1;
@@ -969,8 +969,7 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
     }
 
     /* Got policy_local & policy_remote, let's initalize the SRTP */
-    status = pjmedia_transport_srtp_init_session(tp, 
-						 &policy_local, &policy_remote);
+    status = pjmedia_transport_srtp_start(tp, &policy_local, &policy_remote);
     if (status != PJ_SUCCESS)
 	return status;
 
@@ -984,7 +983,7 @@ static pj_status_t transport_media_stop(pjmedia_transport *tp)
     struct transport_srtp *srtp = (struct transport_srtp*) tp;
     pj_status_t status;
 
-    status = pjmedia_transport_srtp_deinit_session(tp);
+    status = pjmedia_transport_srtp_stop(tp);
     if (status != PJ_SUCCESS)
 	PJ_LOG(4, (THIS_FILE, "Failed deinit session."));
 

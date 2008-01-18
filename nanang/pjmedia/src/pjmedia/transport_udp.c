@@ -121,7 +121,8 @@ static pj_status_t transport_send_rtcp(pjmedia_transport *tp,
 static pj_status_t transport_media_create(pjmedia_transport *tp,
 				       pj_pool_t *pool,
 				       pjmedia_sdp_session *sdp_local,
-				       const pjmedia_sdp_session *sdp_remote);
+				       const pjmedia_sdp_session *sdp_remote,
+				       unsigned media_index);
 static pj_status_t transport_media_start (pjmedia_transport *tp,
 				       pj_pool_t *pool,
 				       pjmedia_sdp_session *sdp_local,
@@ -740,7 +741,8 @@ static pj_status_t transport_send_rtcp(pjmedia_transport *tp,
 static pj_status_t transport_media_create(pjmedia_transport *tp,
 				  pj_pool_t *pool,
 				  pjmedia_sdp_session *sdp_local,
-				  const pjmedia_sdp_session *sdp_remote)
+				  const pjmedia_sdp_session *sdp_remote,
+				  unsigned media_index)
 {
     PJ_UNUSED_ARG(tp);
     PJ_UNUSED_ARG(pool);
