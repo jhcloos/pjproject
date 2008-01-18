@@ -263,12 +263,21 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 				       unsigned media_index)
 {
     struct transport_ice *tp_ice = (struct transport_ice*)tp;
+    pj_ice_sess_role ice_role;
     enum { MAXLEN = 256 };
     char *buffer;
     pjmedia_sdp_attr *attr;
     unsigned i, cand_cnt;
+    pj_status_t status;
 
-    PJ_UNUSED_ARG(sdp_remote);
+    /* Init ICE */
+    ice_role = (sdp_remote==NULL ? PJ_ICE_SESS_ROLE_CONTROLLING : 
+				   PJ_ICE_SESS_ROLE_CONTROLLED);
+
+    status = pjmedia_ice_init_ice(tp, ice_role, NULL, NULL);
+    if (status != PJ_SUCCESS)
+	return status;
+
 
     buffer = (char*) pj_pool_alloc(pool, MAXLEN);
 
@@ -286,6 +295,7 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
     cand_cnt = tp_ice->ice_st->ice->lcand_cnt;
     for (i=0; i<cand_cnt; ++i) {
 	pj_ice_sess_cand *cand;
+	pjmedia_sdp_media *m;
 	pj_str_t value;
 	int len;
 
@@ -335,7 +345,8 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 
 	value = pj_str(buffer);
 	attr = pjmedia_sdp_attr_create(pool, "candidate", &value);
-	sdp_local->media[0]->attr[sdp_local->media[0]->attr_count++] = attr;
+	m = sdp_local->media[media_index];
+	m->attr[m->attr_count++] = attr;
     }
 
     /* Done */
