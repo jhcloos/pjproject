@@ -24,7 +24,7 @@
 #endif
 
 #if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
-    pj_str_t srtp_transport_getliberrstr(int err);
+    const char* get_libsrtp_errstr(int err);
 #endif
 
 
@@ -154,7 +154,7 @@ static const struct
     PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPINCRYPTO,    "Invalid SRTP crypto attribute" ),
     PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPINCRYPTOTAG, "Invalid SRTP crypto tag" ),
     PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPINTRANSPORT, "Invalid SDP media transport for SRTP" ),
-    PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPREQCRYPTO,   "SRTP crypto attribute required in SDP" ),
+    PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPREQCRYPTO,   "SRTP crypto attribute required" ),
     PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPREQSECTP,    "Secure transport required in SDP media descriptor" )
 };
 
@@ -200,9 +200,8 @@ PJ_DEF(pj_str_t) pjmedia_strerror( pj_status_t statcode,
 	int err = statcode - PJMEDIA_PORTAUDIO_ERRNO_START;
 	pj_str_t msg;
 	
-	msg = srtp_transport_getliberrstr(err);
+	msg = pj_str((char*)get_libsrtp_errstr(err));
 
-	errstr.ptr = buf;
 	pj_strncpy_with_null(&errstr, &msg, bufsize);
 	return errstr;
     
