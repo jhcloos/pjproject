@@ -175,23 +175,22 @@ static pj_status_t create_stream( pj_pool_t *pool,
 
     /* Check if SRTP enabled */
     if (use_srtp) {
-	pjmedia_srtp_stream_policy tx_plc, rx_plc;
+	pjmedia_srtp_crypto tx_plc, rx_plc;
 
 	status = pjmedia_transport_srtp_create(med_endpt, transport, 
-			    PJMEDIA_SRTP_AUTO_CLOSE_UNDERLYING_TRANSPORT,
-			    &srtp_tp);
+					       NULL, &srtp_tp);
 	if (status != PJ_SUCCESS)
 	    return status;
 
-	pj_bzero(&tx_plc, sizeof(pjmedia_srtp_stream_policy));
-	pj_bzero(&rx_plc, sizeof(pjmedia_srtp_stream_policy));
+	pj_bzero(&tx_plc, sizeof(pjmedia_srtp_crypto));
+	pj_bzero(&rx_plc, sizeof(pjmedia_srtp_crypto));
 
 	tx_plc.key = *srtp_tx_key;
-	tx_plc.crypto_suite = *crypto_suite;
+	tx_plc.name = *crypto_suite;
 	rx_plc.key = *srtp_rx_key;
-	rx_plc.crypto_suite = *crypto_suite;
+	rx_plc.name = *crypto_suite;
 	
-	status = pjmedia_transport_srtp_init_session(srtp_tp, &tx_plc, &rx_plc);
+	status = pjmedia_transport_srtp_start(srtp_tp, &tx_plc, &rx_plc);
 	if (status != PJ_SUCCESS)
 	    return status;
     }

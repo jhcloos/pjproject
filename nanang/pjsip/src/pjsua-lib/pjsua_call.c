@@ -2405,6 +2405,7 @@ static void pjsua_call_on_media_update(pjsip_inv_session *inv,
 				       pj_status_t status)
 {
     pjsua_call *call;
+    const pjmedia_sdp_session *c_local;
     pjmedia_sdp_session *local_sdp;
     const pjmedia_sdp_session *remote_sdp;
 
@@ -2434,7 +2435,7 @@ static void pjsua_call_on_media_update(pjsip_inv_session *inv,
 
 
     /* Get local and remote SDP */
-    status = pjmedia_sdp_neg_get_active_local(call->inv->neg, &local_sdp);
+    status = pjmedia_sdp_neg_get_active_local(call->inv->neg, &c_local);
     if (status != PJ_SUCCESS) {
 	pjsua_perror(THIS_FILE, 
 		     "Unable to retrieve currently active local SDP", 
@@ -2443,6 +2444,7 @@ static void pjsua_call_on_media_update(pjsip_inv_session *inv,
 	PJSUA_UNLOCK();
 	return;
     }
+    local_sdp = (pjmedia_sdp_session*) c_local;
 
     status = pjmedia_sdp_neg_get_active_remote(call->inv->neg, &remote_sdp);
     if (status != PJ_SUCCESS) {

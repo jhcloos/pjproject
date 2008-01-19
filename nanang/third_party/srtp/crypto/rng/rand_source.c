@@ -42,7 +42,7 @@
  *
  */
 
-#include "config.h"
+#include "srtp_config.h"
 
 #ifdef DEV_URANDOM
 # include <fcntl.h>          /* for open()  */

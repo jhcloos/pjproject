@@ -166,12 +166,12 @@
 
 PJ_BEGIN_DECL
 
+#include <pjmedia/sdp.h>
 
 /*
  * Forward declaration for media transport.
  */
 typedef struct pjmedia_transport pjmedia_transport;
-typedef struct pjmedia_sdp_session pjmedia_sdp_session;
 
 
 /**

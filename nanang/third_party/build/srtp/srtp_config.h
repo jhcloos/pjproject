@@ -1,10 +1,17 @@
-/* config.h for Win32/MSVC */
+#include <pj/types.h>
 
 /* Define if building for a CISC machine (e.g. Intel). */
-#define CPU_CISC 1
+/* #define CPU_CISC 1 */
 
 /* Define if building for a RISC machine (assume slow byte access). */
 /* #undef CPU_RISC */
+
+/* PJLIB can't detect CISC vs RISC CPU, so we'll just say RISC here */
+#if defined(PJ_WIN32) && PJ_WIN32!=0
+#   define CPU_CISC	1
+#else
+#   define CPU_RISC	1
+#endif
 
 /* Path to random device */
 /* #define DEV_URANDOM "/dev/urandom" */
@@ -16,19 +23,23 @@
 /* #undef ERR_REPORTING_FILE */
 
 /* Define to use logging to stdout. */
-#define ERR_REPORTING_STDOUT 1
+//#define ERR_REPORTING_STDOUT 1
 
 /* Define this to use ISMAcryp code. */
 /* #undef GENERIC_AESICM */
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
-/* #undef HAVE_ARPA_INET_H */
+#ifdef PJ_HAS_ARPA_INET_H 
+#   define HAVE_ARPA_INET_H 1
+#endif
 
 /* Define to 1 if you have the <byteswap.h> header file. */
 /* #undef HAVE_BYTESWAP_H */
 
 /* Define to 1 if you have the `inet_aton' function. */
-/* #undef HAVE_INET_ATON */
+#ifdef PJ_SOCK_HAS_INET_PTON
+#   define HAVE_INET_ATON   1
+#endif
 
 /* Define to 1 if the system has the type `int16_t'. */
 #define HAVE_INT16_T 1
@@ -49,10 +60,12 @@
 /* #undef HAVE_MACHINE_TYPES_H */
 
 /* Define to 1 if you have the <memory.h> header file. */
-#define HAVE_MEMORY_H 1
+//#define HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
-/* #undef HAVE_NETINET_IN_H */
+#ifdef PJ_HAS_NETINET_IN_H
+#   define HAVE_NETINET_IN_H	1
+#endif
 
 /* Define to 1 if you have the `socket' function. */
 /* #undef HAVE_SOCKET */
@@ -61,13 +74,17 @@
 /* #undef HAVE_STDINT_H */
 
 /* Define to 1 if you have the <stdlib.h> header file. */
-#define HAVE_STDLIB_H 1
+#ifdef PJ_HAS_STDLIB_H
+#   define HAVE_STDLIB_H 1
+#endif
 
 /* Define to 1 if you have the <strings.h> header file. */
-#define HAVE_STRINGS_H 1
+//#define HAVE_STRINGS_H 1
 
 /* Define to 1 if you have the <string.h> header file. */
-#define HAVE_STRING_H 1
+#ifdef PJ_HAS_STRING_H
+#   define HAVE_STRING_H 1
+#endif
 
 /* Define to 1 if you have the <syslog.h> header file. */
 /* #undef HAVE_SYSLOG_H */
@@ -76,16 +93,23 @@
 /* #undef HAVE_SYS_INT_TYPES_H */
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
-/* #undef HAVE_SYS_SOCKET_H */
+#ifdef PJ_HAS_SYS_SOCKET_H
+#   define HAVE_SYS_SOCKET_H	1
+#endif
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
-#define HAVE_SYS_STAT_H 1
+//#define HAVE_SYS_STAT_H 1
 
 /* Define to 1 if you have the <sys/types.h> header file. */
-#define HAVE_SYS_TYPES_H 1
+#ifdef PJ_HAS_SYS_TYPES_H
+#   define HAVE_SYS_TYPES_H 1
+#endif
 
 /* Define to 1 if you have the <sys/uio.h> header file. */
 /* #undef HAVE_SYS_UIO_H */
+
+/* Define to 1 if the system has the type `uint8_t'. */
+#define HAVE_UINT8_T 1
 
 /* Define to 1 if the system has the type `uint16_t'. */
 #define HAVE_UINT16_T 1
@@ -96,20 +120,23 @@
 /* Define to 1 if the system has the type `uint64_t'. */
 #define HAVE_UINT64_T 1
 
-/* Define to 1 if the system has the type `uint8_t'. */
-#define HAVE_UINT8_T 1
-
 /* Define to 1 if you have the <unistd.h> header file. */
-/* #undef HAVE_UNISTD_H */
-
 /* Define to 1 if you have the `usleep' function. */
-/* #undef HAVE_USLEEP */
+#ifdef PJ_HAS_UNISTD_H
+#   define HAVE_UNISTD_H    1
+#   define HAVE_USLEEP	    1
+#endif
+
 
 /* Define to 1 if you have the <windows.h> header file. */
-#define HAVE_WINDOWS_H 1
+#if defined(PJ_WIN32) && PJ_WIN32!=0
+#   define HAVE_WINDOWS_H 1
+#endif
 
 /* Define to 1 if you have the <winsock2.h> header file. */
-#define HAVE_WINSOCK2_H 1
+#ifdef PJ_HAS_WINSOCK2_H 
+#   define HAVE_WINSOCK2_H 1
+#endif
 
 /* Define to use X86 inlined assembly code */
 /* #undef HAVE_X86 */
@@ -130,7 +157,7 @@
 #define PACKAGE_VERSION ""
 
 /* The size of a `unsigned long', as computed by sizeof. */
-#define SIZEOF_UNSIGNED_LONG 4
+#define SIZEOF_UNSIGNED_LONG (sizeof(unsigned long))
 
 /* The size of a `unsigned long long', as computed by sizeof. */
 #define SIZEOF_UNSIGNED_LONG_LONG 8
@@ -145,7 +172,7 @@
 /* #undef SRTP_KERNEL_LINUX */
 
 /* Define to 1 if you have the ANSI C header files. */
-#define STDC_HEADERS 1
+//#define STDC_HEADERS 1
 
 /* Write errors to this file */
 /* #undef USE_ERR_REPORTING_FILE */
@@ -160,8 +187,10 @@
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */
 
-/* Define 'inline' to nothing, since the MSVC compiler doesn't support it.  */
-#define inline 
+/* MSVC does't have "inline" */
+#if defined(_MSC_VER)
+#   define inline _inline
+#endif
 
 /* Define to `unsigned' if <sys/types.h> does not define. */
 /* #undef size_t */
@@ -175,15 +204,16 @@
 #   endif
 #endif // VC8+
 
-#ifndef uint32_t
-    typedef unsigned char	uint8_t;
-    typedef unsigned short	uint16_t;
-    typedef unsigned int	uint32_t;
-    typedef unsigned __int64    uint64_t;
-    typedef signed char		int8_t;
-    typedef short		int16_t;
-    typedef int			int32_t;
-    typedef __int64		int64_t;
+#ifndef int_types_defined
+    typedef pj_uint8_t	uint8_t;
+    typedef pj_uint16_t	uint16_t;
+    typedef pj_uint32_t uint32_t;
+    typedef pj_uint64_t uint64_t;
+    typedef pj_int8_t	int8_t;
+    typedef pj_int16_t	int16_t;
+    typedef pj_int32_t	int32_t;
+    typedef pj_int64_t	int64_t;
+#   define int_types_defined
 #endif
 
 #ifdef _MSC_VER
@@ -192,3 +222,4 @@
     #pragma warning(disable:4018) // signed/unsigned mismatch
     #pragma warning(disable:4244) // conversion from int64 to int
 #endif
+
