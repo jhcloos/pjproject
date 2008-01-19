@@ -180,45 +180,43 @@ static pjmedia_transport_op transport_srtp_op =
 char * octet_string_hex_string(const void *s, int length);
 
 
-pj_str_t srtp_transport_getliberrstr(int err)
+const char* get_libsrtp_errstr(int err)
 {
-    pj_str_t msg = {NULL, 0};
-
 #if defined(PJ_HAS_ERROR_STRING) && (PJ_HAS_ERROR_STRING != 0)
     static char *liberr[] = {
-	"nothing to report                       ", /* err_status_ok           = 0,   */
-	"unspecified failure                     ", /* err_status_fail         = 1,   */
-	"unsupported parameter                   ", /* err_status_bad_param    = 2,   */
-	"couldn't allocate memory                ", /* err_status_alloc_fail   = 3,   */
-	"couldn't deallocate properly            ", /* err_status_dealloc_fail = 4,   */
-	"couldn't initialize                     ", /* err_status_init_fail    = 5,   */
-	"can't process as much data as requested ", /* err_status_terminus     = 6,   */
-	"authentication failure                  ", /* err_status_auth_fail    = 7,   */
-	"cipher failure                          ", /* err_status_cipher_fail  = 8,   */
-	"replay check failed (bad index)         ", /* err_status_replay_fail  = 9,   */
-	"replay check failed (index too old)     ", /* err_status_replay_old   = 10,  */
-	"algorithm failed test routine           ", /* err_status_algo_fail    = 11,  */
-	"unsupported operation                   ", /* err_status_no_such_op   = 12,  */
-	"no appropriate context found            ", /* err_status_no_ctx       = 13,  */
-	"unable to perform desired validation    ", /* err_status_cant_check   = 14,  */
-	"can't use key any more                  ", /* err_status_key_expired  = 15,  */
-	"error in use of socket                  ", /* err_status_socket_err   = 16,  */
-	"error in use POSIX signals              ", /* err_status_signal_err   = 17,  */
-	"nonce check failed                      ", /* err_status_nonce_bad    = 18,  */
-	"couldn't read data                      ", /* err_status_read_fail    = 19,  */
-	"couldn't write data                     ", /* err_status_write_fail   = 20,  */
-	"error pasring data                      ", /* err_status_parse_err    = 21,  */
-	"error encoding data                     ", /* err_status_encode_err   = 22,  */
-	"error while using semaphores            ", /* err_status_semaphore_err = 23,  */
-	"error while using pfkey                 " /* err_status_pfkey_err    = 24,   */
+	"ok",				    /* err_status_ok            = 0  */
+	"unspecified failure",		    /* err_status_fail          = 1  */
+	"unsupported parameter",	    /* err_status_bad_param     = 2  */
+	"couldn't allocate memory",	    /* err_status_alloc_fail    = 3  */
+	"couldn't deallocate properly",	    /* err_status_dealloc_fail  = 4  */
+	"couldn't initialize",		    /* err_status_init_fail     = 5  */
+	"can't process as much data as requested", 
+					    /* err_status_terminus      = 6  */
+	"authentication failure",	    /* err_status_auth_fail     = 7  */
+	"cipher failure",		    /* err_status_cipher_fail   = 8  */
+	"replay check failed (bad index)",  /* err_status_replay_fail   = 9  */
+	"replay check failed (index too old)", 
+					    /* err_status_replay_old    = 10 */
+	"algorithm failed test routine",    /* err_status_algo_fail     = 11 */
+	"unsupported operation",	    /* err_status_no_such_op    = 12 */
+	"no appropriate context found",	    /* err_status_no_ctx        = 13 */
+	"unable to perform desired validation", 
+					    /* err_status_cant_check    = 14 */
+	"can't use key any more",	    /* err_status_key_expired   = 15 */
+	"error in use of socket",	    /* err_status_socket_err    = 16 */
+	"error in use POSIX signals",	    /* err_status_signal_err    = 17 */
+	"nonce check failed",		    /* err_status_nonce_bad     = 18 */
+	"couldn't read data",		    /* err_status_read_fail     = 19 */
+	"couldn't write data",		    /* err_status_write_fail    = 20 */
+	"error pasring data",		    /* err_status_parse_err     = 21 */
+	"error encoding data",		    /* err_status_encode_err    = 22 */
+	"error while using semaphores",	    /* err_status_semaphore_err = 23 */
+	"error while using pfkey"	    /* err_status_pfkey_err     = 24 */
     };
-    if (err >= 0 && err <= 24) {
-	msg.ptr = liberr[err];
-	msg.slen = 40;
-    }
+    return liberr[err];
+#else
+    return NULL;
 #endif
-
-    return msg;
 }
 
 static pj_status_t pjmedia_srtp_init_lib(void)
@@ -234,8 +232,6 @@ static pj_status_t pjmedia_srtp_init_lib(void)
 	}
 
 	initialized = PJ_TRUE;
-
-	PJ_TODO(REGISTER_LIBSRTP_ERROR_CODES_AND_MESSAGES);
     }
     
     return PJ_SUCCESS;
@@ -246,6 +242,9 @@ static int get_crypto_idx(const pj_str_t* crypto_name)
     int i;
     int cs_cnt = sizeof(crypto_suites)/sizeof(crypto_suites[0]);
     
+    if (crypto_name->slen == 0)
+	return 0;
+
     for (i=0; i<cs_cnt; ++i) {
 	if (!pj_stricmp2(crypto_name, crypto_suites[i].name))
 	    return i;
@@ -283,6 +282,27 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_create(
 
     PJ_ASSERT_RETURN(endpt && p_tp, PJ_EINVAL);
 
+    /* Check crypto availability */
+    if (opt->crypto_count == 0 && 
+	opt->use == PJMEDIA_SRTP_MANDATORY)
+	return PJMEDIA_SRTP_ESDPREQCRYPTO;
+
+    /* Check crypto */
+    if (opt->use != PJMEDIA_SRTP_DISABLED) {
+	for (i=0; i < opt->crypto_count; ++i) {
+	    int cs_idx = get_crypto_idx(&opt->crypto[i].name);
+
+	    /* check crypto name */
+	    if (cs_idx == -1)
+		return PJMEDIA_SRTP_ENOTSUPCRYPTO;
+
+	    /* check key length */
+	    if (opt->crypto[i].key.slen && 
+		opt->crypto[i].key.slen < crypto_suites[cs_idx].cipher_key_len)
+		return PJMEDIA_SRTP_EINKEYLEN;
+	}
+    }
+
     /* Init libsrtp. */
     status = pjmedia_srtp_init_lib();
     if (status != PJ_SUCCESS)
@@ -293,25 +313,26 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_create(
 
     srtp->pool = pool;
     srtp->session_inited = PJ_FALSE;
-    srtp->bypass_srtp = PJ_TRUE;
+    srtp->bypass_srtp = PJ_FALSE;
 
     if (opt) {
 	srtp->setting = *opt;
-	for (i=0; i < opt->crypto_count; ++i) {
-	    int cs_idx = get_crypto_idx(&opt->crypto[i].name);
-	    if (cs_idx == -1)
-		return PJMEDIA_SRTP_ENOTSUPCRYPTO;
+	if (opt->use == PJMEDIA_SRTP_DISABLED)
+	    srtp->setting.crypto_count = 0;
 
+	for (i=0; i < srtp->setting.crypto_count; ++i) {
+	    int cs_idx = get_crypto_idx(&opt->crypto[i].name);
+	    pj_str_t tmp_key = opt->crypto[i].key;
+
+	    /* re-set crypto */
 	    srtp->setting.crypto[i].name = pj_str(crypto_suites[cs_idx].name);
-	    pj_strdup(pool, &srtp->setting.crypto[i].key, &opt->crypto[i].key);
+	    /* cut key length */
+	    tmp_key.slen = crypto_suites[cs_idx].cipher_key_len;
+	    pj_strdup(pool, &srtp->setting.crypto[i].key, &tmp_key);
 	}
     } else {
 	pjmedia_srtp_setting_default(&srtp->setting);
     }
-
-    if (srtp->setting.crypto_count==0 && 
-	srtp->setting.use == PJMEDIA_SRTP_MANDATORY)
-	return PJMEDIA_SRTP_ESDPREQCRYPTO;
 
     status = pj_lock_create_null_mutex(pool, pool->obj_name, &srtp->mutex);
     if (status != PJ_SUCCESS) {
@@ -376,6 +397,11 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_start(
     if (cr_tx_idx == -1 || cr_rx_idx == -1 || au_tx_idx == -1 || au_rx_idx == -1)
 	return PJMEDIA_SRTP_ENOTSUPCRYPTO;
 
+    if (cr_tx_idx == 0 && cr_rx_idx == 0 && au_tx_idx == 0 && au_rx_idx == 0) {
+	srtp->bypass_srtp = PJ_TRUE;
+	return PJ_SUCCESS;
+    }
+
     /* Init transmit direction */
     pj_bzero(&tx_, sizeof(srtp_policy_t));
     pj_memmove(srtp->tx_key, tx->key.ptr, tx->key.slen);
@@ -428,7 +454,6 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_start(
 
     /* Declare SRTP session initialized */
     srtp->session_inited = PJ_TRUE;
-    srtp->bypass_srtp = PJ_FALSE;
 
     PJ_LOG(5, (THIS_FILE, "TX: %s key=%s", srtp->tx_policy.name.ptr,
 	    octet_string_hex_string(tx->key.ptr, tx->key.slen)));
@@ -544,7 +569,7 @@ static pj_status_t transport_send_rtp( pjmedia_transport *tp,
     err_status_t err;
 
     if (srtp->bypass_srtp)
-	return pjmedia_transport_send_rtp(srtp->real_tp, srtp->tx_buffer, len);
+	return pjmedia_transport_send_rtp(srtp->real_tp, pkt, size);
 
     if (!srtp->session_inited)
 	return PJ_SUCCESS;
@@ -577,7 +602,7 @@ static pj_status_t transport_send_rtcp(pjmedia_transport *tp,
     err_status_t err;
 
     if (srtp->bypass_srtp)
-	return pjmedia_transport_send_rtp(srtp->real_tp, srtp->tx_buffer, len);
+	return pjmedia_transport_send_rtp(srtp->real_tp, pkt, size);
 
     if (!srtp->session_inited)
 	return PJ_SUCCESS;
@@ -641,7 +666,7 @@ static void srtp_rtp_cb( void *user_data, const void *pkt, pj_ssize_t size)
     err_status_t err;
 
     if (srtp->bypass_srtp) {
-	srtp->rtp_cb(srtp->user_data, srtp->rx_buffer, len);
+	srtp->rtp_cb(srtp->user_data, pkt, size);
 	return;
     }
 
@@ -673,7 +698,7 @@ static void srtp_rtcp_cb( void *user_data, const void *pkt, pj_ssize_t size)
     err_status_t err;
 
     if (srtp->bypass_srtp) {
-	srtp->rtcp_cb(srtp->user_data, srtp->rx_buffer, len);
+	srtp->rtcp_cb(srtp->user_data, pkt, size);
 	return;
     }
 
@@ -745,7 +770,7 @@ static pj_status_t generate_crypto_attr_value(pj_pool_t *pool,
 	pj_strdup2(pool, &crypto->key, key);
     }
 
-    if ((unsigned)crypto->key.slen != crypto_suites[cs_idx].cipher_key_len)
+    if (crypto->key.slen != (int)crypto_suites[cs_idx].cipher_key_len)
 	return PJMEDIA_SRTP_EINKEYLEN;
 
     /* Key transmitted via SDP should be base64 encoded. */
@@ -758,7 +783,7 @@ static pj_status_t generate_crypto_attr_value(pj_pool_t *pool,
 
     b64_key[b64_key_len] = '\0';
     
-    PJ_ASSERT_RETURN((unsigned)*buffer_len >= (crypto->name.slen + \
+    PJ_ASSERT_RETURN(*buffer_len >= (crypto->name.slen + \
 		     b64_key_len + 16), PJ_ETOOSMALL);
 
     /* Print the crypto attribute value. */
@@ -958,6 +983,12 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 		    if (pj_stricmp(&tmp_rx_crypto.name, 
 				   &srtp->setting.crypto[j].name) == 0)
 		    {
+			int cs_idx = get_crypto_idx(&tmp_rx_crypto.name);
+
+			if (tmp_rx_crypto.key.slen != 
+			    (int)crypto_suites[cs_idx].cipher_key_len)
+			    return PJMEDIA_SRTP_EINKEYLEN;
+
 			srtp->tx_policy = srtp->setting.crypto[j];
 			srtp->rx_policy = tmp_rx_crypto;
 			chosen_tag = tags[cr_count];
@@ -1035,13 +1066,17 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
 
     /* bypass if media transport is not RTP/AVP or RTP/SAVP */
     if (pj_stricmp(&m_loc->desc.transport, &ID_RTP_AVP)  != 0 && 
-	pj_stricmp(&m_loc->desc.transport, &ID_RTP_SAVP) != 0)
+	pj_stricmp(&m_loc->desc.transport, &ID_RTP_SAVP) != 0) 
+    {
+	srtp->bypass_srtp = PJ_TRUE;
 	goto PROPAGATE_MEDIA_START;
+    }
 
     /* If the media is inactive, do nothing. */
     if (pjmedia_sdp_media_find_attr(m_loc, &ID_INACTIVE, NULL) || 
 	(m_rem && pjmedia_sdp_media_find_attr(m_rem, &ID_INACTIVE, NULL)))
     {
+	srtp->bypass_srtp = PJ_TRUE;
 	goto PROPAGATE_MEDIA_START;
     }
 
@@ -1056,7 +1091,8 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
 		DEACTIVATE_MEDIA(pool, m_loc);
 		return PJMEDIA_SRTP_ESDPINCRYPTO;
 	    }
-	    goto PROPAGATE_MEDIA_START;;
+	    srtp->bypass_srtp = PJ_TRUE;
+	    goto PROPAGATE_MEDIA_START;
 	} else if (srtp->setting.use == PJMEDIA_SRTP_OPTIONAL) {
 	    if (pj_stricmp(&m_rem->desc.transport, &m_loc->desc.transport)) {
 		DEACTIVATE_MEDIA(pool, m_loc);
@@ -1072,6 +1108,7 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
     
     if (srtp->offerer_side) {
 	/* find supported crypto-suite, get the tag, and assign policy_local */
+	pjmedia_srtp_crypto tmp_tx_crypto;
 	pj_bool_t has_crypto_attr = PJ_FALSE;
 	int rem_tag;
 
@@ -1088,13 +1125,13 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
 	    has_crypto_attr = PJ_TRUE;
 
 	    status = parse_attr_crypto(pool, m_rem->attr[i], 
-				       &srtp->rx_policy, &rem_tag);
+				       &tmp_tx_crypto, &rem_tag);
 	    if (status != PJ_SUCCESS)
 		return status;
 
 
 	    /* our offer tag is always ordered by setting */
-	    if (rem_tag<1 || rem_tag>srtp->setting.crypto_count) {
+	    if (rem_tag < 1 || rem_tag > srtp->setting.crypto_count) {
 		DEACTIVATE_MEDIA(pool, m_loc);
 		return PJMEDIA_SRTP_ESDPINCRYPTOTAG;
 	    }
@@ -1108,14 +1145,18 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
 	    }
 
 	    srtp->tx_policy = srtp->setting.crypto[rem_tag-1];
+	    srtp->rx_policy = tmp_tx_crypto;
 	}
 
 	if (srtp->setting.use == PJMEDIA_SRTP_DISABLED) {
 	    /* should never reach here */
+	    srtp->bypass_srtp = PJ_TRUE;
 	    goto PROPAGATE_MEDIA_START;
 	} else if (srtp->setting.use == PJMEDIA_SRTP_OPTIONAL) {
-	    if (!has_crypto_attr)
+	    if (!has_crypto_attr) {
+		srtp->bypass_srtp = PJ_TRUE;
 		goto PROPAGATE_MEDIA_START;
+	    }
 	} else if (srtp->setting.use == PJMEDIA_SRTP_MANDATORY) {
 	    if (!has_crypto_attr) {
 		DEACTIVATE_MEDIA(pool, m_loc);
@@ -1144,9 +1185,11 @@ static pj_status_t transport_media_stop(pjmedia_transport *tp)
     struct transport_srtp *srtp = (struct transport_srtp*) tp;
     pj_status_t status;
 
-    status = pjmedia_transport_srtp_stop(tp);
-    if (status != PJ_SUCCESS)
-	PJ_LOG(4, (THIS_FILE, "Failed deinit session."));
+    if (srtp->setting.close_member_tp) {
+	status = pjmedia_transport_media_stop(srtp->real_tp);
+	if (status != PJ_SUCCESS)
+	    PJ_LOG(4, (THIS_FILE, "Failed deinit session."));
+    }
 
-    return pjmedia_transport_media_stop(srtp->real_tp);
+    return pjmedia_transport_srtp_stop(tp);
 }
