@@ -473,6 +473,7 @@ static pj_status_t parse_args(int argc, char *argv[],
     pj_status_t status;
     pjsua_acc_config *cur_acc;
     char *config_file = NULL;
+    int use_srtp = -1;
     unsigned i;
 
     /* Run pj_getopt once to see if user specifies config file to read. */ 
@@ -799,12 +800,11 @@ static pj_status_t parse_args(int argc, char *argv[],
 	    break;
 
 	case OPT_USE_SRTP:
-	    i = my_atoi(pj_optarg);
-	    if (!pj_isdigit(*pj_optarg) || i > 2) {
+	    use_srtp = my_atoi(pj_optarg);
+	    if (!pj_isdigit(*pj_optarg) || use_srtp > 2) {
 		PJ_LOG(1,(THIS_FILE, "Invalid value for --use-srtp option"));
 		return -1;
 	    }
-	    cur_acc->use_srtp = i;
 	    break;
 
 	case OPT_RTP_PORT:
@@ -1037,6 +1037,8 @@ static pj_status_t parse_args(int argc, char *argv[],
 
     for (i=0; i<cfg->acc_cnt; ++i) {
 	pjsua_acc_config *acfg = &cfg->acc_cfg[i];
+
+	acfg->use_srtp = (pjmedia_srtp_use) use_srtp;
 
 	if (acfg->cred_info[acfg->cred_count].username.slen)
 	{

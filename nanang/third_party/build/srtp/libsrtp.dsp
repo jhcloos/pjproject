@@ -42,7 +42,7 @@ RSC=rc.exe
 # PROP Target_Dir ""
 F90=df.exe
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /I "." /I "../../srtp/include" /I "../../srtp/crypto/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
+# ADD CPP /nologo /MD /W3 /GX /O2 /I "." /I "../../srtp/include" /I "../../srtp/crypto/include" /I "../../../pjlib/include" /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /FR /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -66,7 +66,7 @@ LIB32=link.exe -lib
 # PROP Target_Dir ""
 F90=df.exe
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "." /I "../../srtp/include" /I "../../srtp/crypto/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "." /I "../../srtp/include" /I "../../srtp/crypto/include" /I "../../../pjlib/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /FR /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -89,14 +89,14 @@ LIB32=link.exe -lib
 
 SOURCE=..\..\srtp\srtp\srtp.c
 # End Source File
+# Begin Source File
+
+SOURCE=..\..\srtp\pjlib\srtp_err.c
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
-# Begin Source File
-
-SOURCE=.\config.h
-# End Source File
 # Begin Source File
 
 SOURCE=..\..\srtp\include\rtp.h
@@ -104,6 +104,10 @@ SOURCE=..\..\srtp\include\rtp.h
 # Begin Source File
 
 SOURCE=..\..\srtp\include\srtp.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\srtp_config.h
 # End Source File
 # Begin Source File
 
@@ -290,10 +294,6 @@ SOURCE=..\..\srtp\crypto\kernel\crypto_kernel.c
 # End Source File
 # Begin Source File
 
-SOURCE=..\..\srtp\crypto\kernel\err.c
-# End Source File
-# Begin Source File
-
 SOURCE=..\..\srtp\crypto\kernel\key.c
 # End Source File
 # End Group
@@ -324,10 +324,6 @@ SOURCE=..\..\srtp\crypto\replay\rdb.c
 
 SOURCE=..\..\srtp\crypto\replay\rdbx.c
 # End Source File
-# Begin Source File
-
-SOURCE=..\..\srtp\crypto\replay\ut_sim.c
-# End Source File
 # End Group
 # Begin Group "rng"
 
@@ -345,14 +341,6 @@ SOURCE=..\..\srtp\crypto\rng\prng.c
 SOURCE=..\..\srtp\crypto\rng\rand_source.c
 # End Source File
 # End Group
-# End Group
-# Begin Group "tables"
-
-# PROP Default_Filter ""
-# Begin Source File
-
-SOURCE=..\..\srtp\tables\aes_tables.c
-# End Source File
 # End Group
 # End Target
 # End Project

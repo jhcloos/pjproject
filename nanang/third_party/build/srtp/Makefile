@@ -36,7 +36,7 @@ ust     = crypto/ust/ust.o
 
 rng     = crypto/rng/rand_source.o crypto/rng/prng.o crypto/rng/ctr_prng.o
 
-err     = crypto/kernel/err.o
+err     = pjlib/srtp_err.o
 
 kernel  = crypto/kernel/crypto_kernel.o  crypto/kernel/alloc.o   \
           crypto/kernel/key.o $(rng) $(err) # $(ust) 

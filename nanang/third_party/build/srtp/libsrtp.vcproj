@@ -40,7 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=".,../../srtp/include,../../srtp/crypto/include"
+				AdditionalIncludeDirectories=".,../../srtp/include,../../srtp/crypto/include,../../../pjlib/include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -104,7 +104,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories=".,../../srtp/include,../../srtp/crypto/include"
+				AdditionalIncludeDirectories=".,../../srtp/include,../../srtp/crypto/include,../../../pjlib/include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -154,6 +154,10 @@
 				RelativePath="..\..\srtp\srtp\srtp.c"
 				>
 			</File>
+			<File
+				RelativePath="..\..\srtp\pjlib\srtp_err.c"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -161,15 +165,15 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\config.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\srtp\include\rtp.h"
 				>
 			</File>
 			<File
 				RelativePath="..\..\srtp\include\srtp.h"
+				>
+			</File>
+			<File
+				RelativePath=".\srtp_config.h"
 				>
 			</File>
 			<File
@@ -244,10 +248,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\..\srtp\crypto\kernel\err.c"
-					>
-				</File>
-				<File
 					RelativePath="..\..\srtp\crypto\kernel\key.c"
 					>
 				</File>
@@ -277,10 +277,6 @@
 				</File>
 				<File
 					RelativePath="..\..\srtp\crypto\replay\rdbx.c"
-					>
-				</File>
-				<File
-					RelativePath="..\..\srtp\crypto\replay\ut_sim.c"
 					>
 				</File>
 			</Filter>
