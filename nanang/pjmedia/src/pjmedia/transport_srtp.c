@@ -41,6 +41,7 @@
 static const pj_str_t ID_RTP_AVP  = { "RTP/AVP", 7 };
 static const pj_str_t ID_RTP_SAVP = { "RTP/SAVP", 8 };
 static const pj_str_t ID_INACTIVE = { "inactive", 8 };
+static const pj_str_t ID_CRYPTO   = { "crypto", 6 };
 
 typedef struct crypto_suite
 {
@@ -242,6 +243,7 @@ static int get_crypto_idx(const pj_str_t* crypto_name)
     int i;
     int cs_cnt = sizeof(crypto_suites)/sizeof(crypto_suites[0]);
     
+    /* treat unspecified crypto_name as crypto 'NULL' */
     if (crypto_name->slen == 0)
 	return 0;
 
@@ -300,7 +302,8 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_create(
 
 	    /* check key length */
 	    if (opt->crypto[i].key.slen && 
-		opt->crypto[i].key.slen < crypto_suites[cs_idx].cipher_key_len)
+		opt->crypto[i].key.slen < 
+		(pj_ssize_t)crypto_suites[cs_idx].cipher_key_len)
 		return PJMEDIA_SRTP_EINKEYLEN;
 	}
     }
@@ -383,35 +386,49 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_start(
 
     crypto_suites_cnt = sizeof(crypto_suites)/sizeof(crypto_suites[0]);
 
-    /* Check whether the crypto-suite requested is supported */
+    /* Get encryption and authentication method */
     cr_tx_idx = au_tx_idx = get_crypto_idx(&tx->name);
     if (tx->flags && PJMEDIA_SRTP_NO_ENCRYPTION)
 	cr_tx_idx = 0;
     if (tx->flags && PJMEDIA_SRTP_NO_AUTHENTICATION)
 	au_tx_idx = 0;
 
-    /* Check whether the crypto-suite requested is supported */
     cr_rx_idx = au_rx_idx = get_crypto_idx(&rx->name);
     if (rx->flags && PJMEDIA_SRTP_NO_ENCRYPTION)
 	cr_rx_idx = 0;
     if (rx->flags && PJMEDIA_SRTP_NO_AUTHENTICATION)
 	au_rx_idx = 0;
 
-    if (cr_tx_idx == -1 || cr_rx_idx == -1 || au_tx_idx == -1 || au_rx_idx == -1)
+    /* Check whether the crypto-suite requested is supported */
+    if (cr_tx_idx == -1 || cr_rx_idx == -1 || au_tx_idx == -1 || 
+	au_rx_idx == -1)
 	return PJMEDIA_SRTP_ENOTSUPCRYPTO;
 
+    /* If all options points to 'NULL' method, just bypass SRTP */
     if (cr_tx_idx == 0 && cr_rx_idx == 0 && au_tx_idx == 0 && au_rx_idx == 0) {
 	srtp->bypass_srtp = PJ_TRUE;
 	return PJ_SUCCESS;
     }
 
+    /* Check key length */
+    if (tx->key.slen != (pj_ssize_t)crypto_suites[cr_tx_idx].cipher_key_len ||
+        rx->key.slen != (pj_ssize_t)crypto_suites[cr_rx_idx].cipher_key_len)
+	return PJMEDIA_SRTP_EINKEYLEN;
+
     /* Init transmit direction */
     pj_bzero(&tx_, sizeof(srtp_policy_t));
     pj_memmove(srtp->tx_key, tx->key.ptr, tx->key.slen);
+    if (cr_tx_idx && au_tx_idx)
+	tx_.rtp.sec_serv    = sec_serv_conf_and_auth;
+    else if (cr_tx_idx)
+	tx_.rtp.sec_serv    = sec_serv_conf;
+    else if (au_tx_idx)
+	tx_.rtp.sec_serv    = sec_serv_auth;
+    else
+	tx_.rtp.sec_serv    = sec_serv_none;
     tx_.key		    = (uint8_t*)srtp->tx_key;
     tx_.ssrc.type	    = ssrc_any_outbound;
     tx_.ssrc.value	    = 0;
-    tx_.rtp.sec_serv	    = crypto_suites[cr_tx_idx].service;
     tx_.rtp.cipher_type	    = crypto_suites[cr_tx_idx].cipher_type;
     tx_.rtp.cipher_key_len  = crypto_suites[cr_tx_idx].cipher_key_len;
     tx_.rtp.auth_type	    = crypto_suites[au_tx_idx].auth_type;
@@ -433,6 +450,14 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_start(
     /* Init receive direction */
     pj_bzero(&rx_, sizeof(srtp_policy_t));
     pj_memmove(srtp->rx_key, rx->key.ptr, rx->key.slen);
+    if (cr_rx_idx && au_rx_idx)
+	rx_.rtp.sec_serv    = sec_serv_conf_and_auth;
+    else if (cr_rx_idx)
+	rx_.rtp.sec_serv    = sec_serv_conf;
+    else if (au_rx_idx)
+	rx_.rtp.sec_serv    = sec_serv_auth;
+    else
+	rx_.rtp.sec_serv    = sec_serv_none;
     rx_.key		    = (uint8_t*)srtp->rx_key;
     rx_.ssrc.type	    = ssrc_any_inbound;
     rx_.ssrc.value	    = 0;
@@ -773,7 +798,7 @@ static pj_status_t generate_crypto_attr_value(pj_pool_t *pool,
 	pj_strdup2(pool, &crypto->key, key);
     }
 
-    if (crypto->key.slen != (int)crypto_suites[cs_idx].cipher_key_len)
+    if (crypto->key.slen != (pj_ssize_t)crypto_suites[cs_idx].cipher_key_len)
 	return PJMEDIA_SRTP_EINKEYLEN;
 
     /* Key transmitted via SDP should be base64 encoded. */
@@ -816,7 +841,7 @@ static pj_status_t parse_attr_crypto(pj_pool_t *pool,
     /* Tag */
     token = strtok(input.ptr, " ");
     if (!token) {
-	PJ_LOG(5,(THIS_FILE, "Expecting tag"));
+	PJ_LOG(4,(THIS_FILE, "Attribute crypto expecting tag"));
 	return PJMEDIA_SDP_EINATTR;
     }
     *tag = atoi(token);
@@ -826,7 +851,7 @@ static pj_status_t parse_attr_crypto(pj_pool_t *pool,
     /* Crypto-suite */
     token = strtok(NULL, " ");
     if (!token) {
-	PJ_LOG(5,(THIS_FILE, "Expecting crypto suite"));
+	PJ_LOG(4,(THIS_FILE, "Attribute crypto expecting crypto suite"));
 	return PJMEDIA_SDP_EINATTR;
     }
     crypto->name = pj_str(token);
@@ -834,18 +859,19 @@ static pj_status_t parse_attr_crypto(pj_pool_t *pool,
     /* Key method */
     token = strtok(NULL, ":");
     if (!token) {
-	PJ_LOG(5,(THIS_FILE, "Expecting key method"));
+	PJ_LOG(4,(THIS_FILE, "Attribute crypto expecting key method"));
 	return PJMEDIA_SDP_EINATTR;
     }
     if (pj_ansi_stricmp(token, "inline")) {
-	PJ_LOG(5,(THIS_FILE, "Key method %s not supported!", token));
+	PJ_LOG(4,(THIS_FILE, "Attribute crypto key method '%s' not supported!",
+	          token));
 	return PJMEDIA_SDP_EINATTR;
     }
 
     /* Key */
     token = strtok(NULL, "| ");
     if (!token) {
-	PJ_LOG(5,(THIS_FILE, "Expecting key"));
+	PJ_LOG(4,(THIS_FILE, "Attribute crypto expecting key"));
 	return PJMEDIA_SDP_EINATTR;
     }
     tmp = pj_str(token);
@@ -856,7 +882,7 @@ static pj_status_t parse_attr_crypto(pj_pool_t *pool,
     status = pj_base64_decode(&tmp, (pj_uint8_t*)crypto->key.ptr, 
 			      &itmp);
     if (status != PJ_SUCCESS) {
-	PJ_LOG(5,(THIS_FILE, "Failed decoding key from base64"));
+	PJ_LOG(4,(THIS_FILE, "Failed decoding crypto key from base64"));
 	return status;
     }
     crypto->key.slen = itmp;
@@ -926,6 +952,7 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 		DEACTIVATE_MEDIA(pool, m_loc);
 		return PJMEDIA_SRTP_ESDPINTRANSPORT;
 	    }
+	    m_loc->desc.transport = ID_RTP_SAVP;
 	}
     }
 
@@ -943,7 +970,8 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 	    /* If buffer_len==0, just skip the crypto attribute. */
 	    if (buffer_len) {
 		pj_strset(&attr_value, buffer, buffer_len);
-		attr = pjmedia_sdp_attr_create(pool, "crypto", &attr_value);
+		attr = pjmedia_sdp_attr_create(pool, ID_CRYPTO.ptr, 
+					       &attr_value);
 		m_loc->attr[m_loc->attr_count++] = attr;
 	    }
 	}
@@ -953,15 +981,16 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 	pj_bool_t has_crypto_attr = PJ_FALSE;
 	pj_bool_t has_match = PJ_FALSE;
 	int chosen_tag = 0;
-	int tags[8];
-	int cr_count = 0;
+	int tags[64]; /* assume no more than 64 crypto attrs in a media */
+	int cr_attr_count = 0;
 	int k;
 
 	for (i=0; i<m_rem->attr_count; ++i) {
-	    if (pj_stricmp2(&m_rem->attr[i]->name, "crypto") != 0)
+	    if (pj_stricmp(&m_rem->attr[i]->name, &ID_CRYPTO) != 0)
 		continue;
 
 	    /* SRTP is disabled but there is crypto attr in remote media */
+	    /* Put the checking here to save a bit memory for parsing */
 	    if (srtp->setting.use == PJMEDIA_SRTP_DISABLED) {
 		DEACTIVATE_MEDIA(pool, m_loc);
 		return PJMEDIA_SRTP_ESDPINTRANSPORT;
@@ -970,13 +999,13 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 	    has_crypto_attr = PJ_TRUE;
 
 	    status = parse_attr_crypto(pool, m_rem->attr[i], 
-				       &tmp_rx_crypto, &tags[cr_count]);
+				       &tmp_rx_crypto, &tags[cr_attr_count]);
 	    if (status != PJ_SUCCESS)
 		return status;
 	 
 	    /* Check duplicated tag */
-	    for (k=0; k<cr_count; ++k) {
-		if (tags[k] == tags[cr_count]) {
+	    for (k=0; k<cr_attr_count; ++k) {
+		if (tags[k] == tags[cr_attr_count]) {
 		    DEACTIVATE_MEDIA(pool, m_loc);
 		    return PJMEDIA_SRTP_ESDPDUPCRYPTOTAG;
 		}
@@ -996,12 +1025,12 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 
 			srtp->tx_policy = srtp->setting.crypto[j];
 			srtp->rx_policy = tmp_rx_crypto;
-			chosen_tag = tags[cr_count];
+			chosen_tag = tags[cr_attr_count];
 			has_match = PJ_TRUE;
     			break;
 		    }
 	    }
-	    cr_count++;
+	    cr_attr_count++;
 	}
 
 	if (srtp->setting.use == PJMEDIA_SRTP_DISABLED) {
@@ -1017,13 +1046,16 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 		pj_stricmp(&m_rem->desc.transport, &ID_RTP_AVP) == 0)
 		goto BYPASS_SRTP;
 	} else if (srtp->setting.use == PJMEDIA_SRTP_MANDATORY) {
-	    if (!has_crypto_attr) {
-		DEACTIVATE_MEDIA(pool, m_loc);
-		return PJMEDIA_SRTP_ESDPREQCRYPTO;
-	    }
+	    /* do nothing, this is intended */
 	}
 
-	/* No crypto match? */
+	/* No crypto attr */
+	if (!has_crypto_attr) {
+	    DEACTIVATE_MEDIA(pool, m_loc);
+	    return PJMEDIA_SRTP_ESDPREQCRYPTO;
+	}
+
+	/* No crypto match */
 	if (!has_match) {
 	    DEACTIVATE_MEDIA(pool, m_loc);
 	    return PJMEDIA_SRTP_ENOTSUPCRYPTO;
@@ -1043,7 +1075,7 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 	/* If buffer_len==0, just skip the crypto attribute. */
 	if (buffer_len) {
 	    pj_strset(&attr_value, buffer, buffer_len);
-	    attr = pjmedia_sdp_attr_create(pool, "crypto", &attr_value);
+	    attr = pjmedia_sdp_attr_create(pool, ID_CRYPTO.ptr, &attr_value);
 	    m_loc->attr[m_loc->attr_count++] = attr;
 	}
 
@@ -1090,7 +1122,7 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
      */
     if (srtp->offerer_side) {
 	if (srtp->setting.use == PJMEDIA_SRTP_DISABLED) {
-	    if (pjmedia_sdp_media_find_attr2(m_rem, "crypto", NULL)) {
+	    if (pjmedia_sdp_media_find_attr(m_rem, &ID_CRYPTO, NULL)) {
 		DEACTIVATE_MEDIA(pool, m_loc);
 		return PJMEDIA_SRTP_ESDPINCRYPTO;
 	    }
@@ -1115,7 +1147,7 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
 	int rem_tag;
 
 	for (i=0; i<m_rem->attr_count; ++i) {
-	    if (pj_stricmp2(&m_rem->attr[i]->name, "crypto") != 0)
+	    if (pj_stricmp(&m_rem->attr[i]->name, &ID_CRYPTO) != 0)
 		continue;
 
 	    /* more than one crypto attribute in media answer */
