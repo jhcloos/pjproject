@@ -57,7 +57,9 @@ PJ_BEGIN_DECL
 #define PJMEDIA_ERRNO_FROM_PORTAUDIO(err)   ((int)PJMEDIA_PORTAUDIO_ERRNO_START-err)
 
 
-/**
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
+
+ /**
  * Mapping from LibSRTP error codes to pjmedia error space.
  */
 #define PJMEDIA_LIBSRTP_ERRNO_START (PJMEDIA_ERRNO_END-10200)
@@ -68,6 +70,7 @@ PJ_BEGIN_DECL
  */
 #define PJMEDIA_ERRNO_FROM_LIBSRTP(err)   (PJMEDIA_LIBSRTP_ERRNO_START+err)
 
+#endif
 
 /************************************************************
  * GENERIC/GENERAL PJMEDIA ERRORS
@@ -540,6 +543,7 @@ PJ_BEGIN_DECL
 #define PJMEDIA_ESNDINSAMPLEFMT	    (PJMEDIA_ERRNO_START+203)    /* 220203 */
 
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 /************************************************************
  * SRTP TRANSPORT ERRORS
  ***********************************************************/
@@ -593,6 +597,8 @@ PJ_BEGIN_DECL
  * Secure transport required in SDP media descriptor.
  */
 #define PJMEDIA_SRTP_ESDPREQSECTP   (PJMEDIA_ERRNO_START+229)    /* 220229 */
+
+#endif /* PJMEDIA_HAS_SRTP */
 
 
 /**

@@ -145,6 +145,7 @@ static const struct
     PJ_BUILD_ERR( PJMEDIA_ESNDINDEVID,	    "Invalid sound device ID" ),
     PJ_BUILD_ERR( PJMEDIA_ESNDINSAMPLEFMT,  "Invalid sample format for sound device" ),
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     /* SRTP transport errors: */
     PJ_BUILD_ERR( PJMEDIA_SRTP_ECRYPTONOTMATCH, "SRTP crypto-suite name not match the offerer tag" ),
     PJ_BUILD_ERR( PJMEDIA_SRTP_EINKEYLEN,	"Invalid SRTP key length for specific crypto" ),
@@ -156,6 +157,8 @@ static const struct
     PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPINTRANSPORT, "Invalid SDP media transport for SRTP" ),
     PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPREQCRYPTO,   "SRTP crypto attribute required" ),
     PJ_BUILD_ERR( PJMEDIA_SRTP_ESDPREQSECTP,    "Secure transport required in SDP media descriptor" )
+#endif
+
 };
 
 #endif	/* PJ_HAS_ERROR_STRING */

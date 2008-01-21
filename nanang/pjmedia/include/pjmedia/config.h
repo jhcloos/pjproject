@@ -495,6 +495,14 @@
 #endif
 
 
+/**
+ * SRTP Transport
+ * By default it is enabled.
+ */
+#ifndef PJMEDIA_HAS_SRTP
+#   define PJMEDIA_HAS_SRTP			    1
+#endif
+
 
 /**
  * @}

@@ -626,10 +626,14 @@ pj_bool_t pjsua_call_on_incoming(pjsip_rx_data *rdata)
      */
     acc_id = call->acc_id = pjsua_acc_find_for_incoming(rdata);
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     /* Get signaling security level, only when required by SRTP */
     if (pjsua_var.acc[acc_id].cfg.srtp_secure_signaling < 2) {
 	secure_level = PJSIP_TRANSPORT_IS_SECURE(rdata->tp_info.transport)!=0;
-    } else {
+    } else 
+#endif
+
+    {
 	char *uri;
 	int uri_len;
 	pj_str_t dst;

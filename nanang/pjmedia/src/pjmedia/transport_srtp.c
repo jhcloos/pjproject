@@ -25,6 +25,9 @@
 #include <pj/log.h>
 #include <pj/os.h>
 #include <pj/pool.h>
+
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
+
 #include <srtp.h>
 
 #define THIS_FILE   "transport_srtp.c"
@@ -1227,3 +1230,5 @@ static pj_status_t transport_media_stop(pjmedia_transport *tp)
 
     return pjmedia_transport_srtp_stop(tp);
 }
+
+#endif

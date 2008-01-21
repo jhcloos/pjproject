@@ -55,6 +55,8 @@ static const char *desc =
  "  --send-recv           Set stream direction to bidirectional.        \n"
  "  --send-only           Set stream direction to send only		\n"
  "  --recv-only           Set stream direction to recv only (default)   \n"
+
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
  "  --use-srtp[=NAME]     Enable SRTP with crypto suite NAME            \n"
  "                        e.g: AES_CM_128_HMAC_SHA1_80 (default),       \n"
  "                             AES_CM_128_HMAC_SHA1_32                  \n"
@@ -62,6 +64,8 @@ static const char *desc =
  "                        formated of 60 hex digits (e.g: E148DA..)      \n"
  "  --srtp-tx-key         SRTP key for transmiting                      \n"
  "  --srtp-rx-key         SRTP key for receiving                        \n"
+#endif
+
  "\n"
 ;
 
@@ -132,16 +136,20 @@ static pj_status_t create_stream( pj_pool_t *pool,
 				  pjmedia_dir dir,
 				  pj_uint16_t local_port,
 				  const pj_sockaddr_in *rem_addr,
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 				  pj_bool_t use_srtp,
 				  const pj_str_t *crypto_suite,
 				  const pj_str_t *srtp_tx_key,
 				  const pj_str_t *srtp_rx_key,
+#endif
 				  pjmedia_stream **p_stream )
 {
     pjmedia_stream_info info;
     pjmedia_transport *transport = NULL;
-    pjmedia_transport *srtp_tp = NULL;
     pj_status_t status;
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
+    pjmedia_transport *srtp_tp = NULL;
+#endif
 
 
     /* Reset stream info. */
@@ -173,6 +181,7 @@ static pj_status_t create_stream( pj_pool_t *pool,
     if (status != PJ_SUCCESS)
 	return status;
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     /* Check if SRTP enabled */
     if (use_srtp) {
 	pjmedia_srtp_crypto tx_plc, rx_plc;
@@ -193,14 +202,17 @@ static pj_status_t create_stream( pj_pool_t *pool,
 	status = pjmedia_transport_srtp_start(srtp_tp, &tx_plc, &rx_plc);
 	if (status != PJ_SUCCESS)
 	    return status;
+
+	transport = srtp_tp;
     }
+#endif
 
     /* Now that the stream info is initialized, we can create the 
      * stream.
      */
 
     status = pjmedia_stream_create( med_endpt, pool, &info, 
-				    (use_srtp?srtp_tp:transport), 
+				    transport, 
 				    NULL, p_stream);
 
     if (status != PJ_SUCCESS) {
@@ -238,6 +250,7 @@ int main(int argc, char *argv[])
     char tmp[10];
     pj_status_t status; 
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     /* SRTP variables */
     pj_bool_t use_srtp = PJ_FALSE;
     char tmp_tx_key[64];
@@ -246,6 +259,7 @@ int main(int argc, char *argv[])
     pj_str_t  srtp_rx_key = {NULL, 0};
     pj_str_t  srtp_crypto_suite = {NULL, 0};
     int	tmp_key_len;
+#endif
 
     /* Default values */
     const pjmedia_codec_info *codec_info;
@@ -265,7 +279,9 @@ int main(int argc, char *argv[])
 	OPT_SEND_RECV	= 'b',
 	OPT_SEND_ONLY	= 's',
 	OPT_RECV_ONLY	= 'i',
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 	OPT_USE_SRTP	= 'S',
+#endif
 	OPT_SRTP_TX_KEY	= 'x',
 	OPT_SRTP_RX_KEY	= 'y',
 	OPT_HELP	= 'h',
@@ -280,9 +296,11 @@ int main(int argc, char *argv[])
 	{ "send-recv",      0, 0, OPT_SEND_RECV },
 	{ "send-only",      0, 0, OPT_SEND_ONLY },
 	{ "recv-only",      0, 0, OPT_RECV_ONLY },
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 	{ "use-srtp",	    2, 0, OPT_USE_SRTP },
 	{ "srtp-tx-key",    1, 0, OPT_SRTP_TX_KEY },
 	{ "srtp-rx-key",    1, 0, OPT_SRTP_RX_KEY },
+#endif
 	{ "help",	    0, 0, OPT_HELP },
 	{ NULL, 0, 0, 0 },
     };
@@ -349,6 +367,7 @@ int main(int argc, char *argv[])
 	    dir = PJMEDIA_DIR_DECODING;
 	    break;
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 	case OPT_USE_SRTP:
 	    use_srtp = PJ_TRUE;
 	    if (pj_optarg) {
@@ -367,6 +386,7 @@ int main(int argc, char *argv[])
 	    tmp_key_len = hex_string_to_octet_string(tmp_rx_key, pj_optarg, strlen(pj_optarg));
 	    pj_strset(&srtp_rx_key, tmp_rx_key, tmp_key_len/2);
 	    break;
+#endif
 
 	case OPT_HELP:
 	    usage();
@@ -393,14 +413,16 @@ int main(int argc, char *argv[])
 	dir = PJMEDIA_DIR_ENCODING;
     }
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
+    /* SRTP validation */
     if (use_srtp) {
-	if (((dir & PJMEDIA_DIR_ENCODING) && !srtp_tx_key.slen) ||
-	    ((dir & PJMEDIA_DIR_DECODING) && !srtp_rx_key.slen))
+	if (!srtp_tx_key.slen || !srtp_rx_key.slen)
 	{
 	    printf("Error: Key for each SRTP stream direction must be set\n");
 	    return 1;
 	}
     }
+#endif
 
     /* Must create a pool factory before we can allocate any memory. */
     pj_caching_pool_init(&cp, &pj_pool_factory_default_policy, 0);
@@ -447,8 +469,10 @@ int main(int argc, char *argv[])
     /* Create stream based on program arguments */
     status = create_stream(pool, med_endpt, codec_info, dir, local_port, 
 			   &remote_addr, 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 			   use_srtp, &srtp_crypto_suite, 
 			   &srtp_tx_key, &srtp_rx_key,
+#endif
 			   &stream);
     if (status != PJ_SUCCESS)
 	goto on_exit;

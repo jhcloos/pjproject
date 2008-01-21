@@ -120,7 +120,9 @@ static void usage(void)
     puts  ("");
     puts  ("SIP Account options:");
     puts  ("  --use-ims           Enable 3GPP/IMS related settings on this account");
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     puts  ("  --use-srtp=N        Use SRTP N= 0: disabled, 1: optional, 2: mandatory");
+#endif
     puts  ("  --registrar=url     Set the URL of registrar server");
     puts  ("  --id=url            Set the URL of local ID (used in From header)");
     puts  ("  --contact=url       Optionally override the Contact information");
@@ -442,7 +444,9 @@ static pj_status_t parse_args(int argc, char *argv[],
 	{ "rec-file",   1, 0, OPT_REC_FILE},
 	{ "rtp-port",	1, 0, OPT_RTP_PORT},
 	{ "use-ice",    0, 0, OPT_USE_ICE},
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 	{ "use-srtp",   1, 0, OPT_USE_SRTP},
+#endif
 	{ "add-codec",  1, 0, OPT_ADD_CODEC},
 	{ "dis-codec",  1, 0, OPT_DIS_CODEC},
 	{ "complexity",	1, 0, OPT_COMPLEXITY},
@@ -473,7 +477,6 @@ static pj_status_t parse_args(int argc, char *argv[],
     pj_status_t status;
     pjsua_acc_config *cur_acc;
     char *config_file = NULL;
-    int use_srtp = -1;
     unsigned i;
 
     /* Run pj_getopt once to see if user specifies config file to read. */ 
@@ -799,14 +802,15 @@ static pj_status_t parse_args(int argc, char *argv[],
 	    cfg->media_cfg.enable_ice = PJ_TRUE;
 	    break;
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 	case OPT_USE_SRTP:
-	    use_srtp = my_atoi(pj_optarg);
-	    if (!pj_isdigit(*pj_optarg) || use_srtp > 2) {
+	    app_config.cfg.use_srtp = my_atoi(pj_optarg);
+	    if (!pj_isdigit(*pj_optarg) || app_config.cfg.use_srtp > 2) {
 		PJ_LOG(1,(THIS_FILE, "Invalid value for --use-srtp option"));
 		return -1;
 	    }
-	    app_config.cfg.use_srtp = use_srtp;
 	    break;
+#endif
 
 	case OPT_RTP_PORT:
 	    cfg->rtp_cfg.port = my_atoi(pj_optarg);
@@ -1039,8 +1043,6 @@ static pj_status_t parse_args(int argc, char *argv[],
     for (i=0; i<cfg->acc_cnt; ++i) {
 	pjsua_acc_config *acfg = &cfg->acc_cfg[i];
 
-	acfg->use_srtp = (pjmedia_srtp_use) use_srtp;
-
 	if (acfg->cred_info[acfg->cred_count].username.slen)
 	{
 	    acfg->cred_count++;
@@ -1125,12 +1127,14 @@ static void write_account_settings(int acc_index, pj_str_t *result)
 	pj_strcat2(result, line);
     }
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     /* SRTP */
     if (acc_cfg->use_srtp) {
 	pj_ansi_sprintf(line, "--use-srtp %i\n",
 			(int)acc_cfg->use_srtp);
 	pj_strcat2(result, line);
     }
+#endif
 
     /* Proxy */
     for (i=0; i<acc_cfg->proxy_cnt; ++i) {

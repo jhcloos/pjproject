@@ -403,7 +403,28 @@ typedef int pjsua_conf_port_id;
 #   define PJSUA_ACC_MAX_PROXIES    8
 #endif
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
 
+/**
+ * Default value of SRTP mode usage. Valid values are PJMEDIA_SRTP_DISABLED, 
+ * PJMEDIA_SRTP_OPTIONAL, and PJMEDIA_SRTP_MANDATORY.
+ */
+#ifndef PJSUA_DEFAULT_USE_SRTP
+    #define PJSUA_DEFAULT_USE_SRTP  PJMEDIA_SRTP_DISABLED
+#endif
+
+/**
+ * Default value of secure signaling requirement for SRTP.
+ * Valid values are:
+ *	0: SRTP does not require secure signaling
+ *	1: SRTP requires secure transport such as TLS
+ *	2: SRTP requires secure end-to-end transport (SIPS)
+ */
+#ifndef PJSUA_DEFAULT_SRTP_SECURE_SIGNALING
+    #define PJSUA_DEFAULT_SRTP_SECURE_SIGNALING 0
+#endif
+
+#endif
 
 /**
  * Logging configuration, which can be (optionally) specified when calling
@@ -1034,6 +1055,7 @@ typedef struct pjsua_config
      */
     pj_str_t	    user_agent;
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     /**
      * Specify default value of secure media transport usage. 
      * Valid values are PJMEDIA_SRTP_DISABLED, PJMEDIA_SRTP_OPTIONAL, and
@@ -1042,8 +1064,7 @@ typedef struct pjsua_config
      * Note that this setting can be further customized in account 
      * configuration (#pjsua_acc_config).
      *
-     * Default:
-     *	PJMEDIA_SRTP_DISABLED
+     * Default: #PJSUA_DEFAULT_USE_SRTP
      */
     pjmedia_srtp_use	use_srtp;
 
@@ -1059,9 +1080,10 @@ typedef struct pjsua_config
      * Note that this setting can be further customized in account 
      * configuration (#pjsua_acc_config).
      *
-     * Default: 0
+     * Default: #PJSUA_DEFAULT_SRTP_SECURE_SIGNALING
      */
     int		     srtp_secure_signaling;
+#endif
 
 } pjsua_config;
 
@@ -2000,13 +2022,13 @@ typedef struct pjsua_acc_config
      */
     pj_str_t	     ka_data;
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     /**
      * Specify whether secure media transport should be used for this account.
      * Valid values are PJMEDIA_SRTP_DISABLED, PJMEDIA_SRTP_OPTIONAL, and
      * PJMEDIA_SRTP_MANDATORY.
      *
-     * Default:
-     *	PJMEDIA_SRTP_DISABLED
+     * Default: #PJSUA_DEFAULT_USE_SRTP
      */
     pjmedia_srtp_use	use_srtp;
 
@@ -2019,9 +2041,10 @@ typedef struct pjsua_acc_config
      *	1: SRTP requires secure transport such as TLS
      *	2: SRTP requires secure end-to-end transport (SIPS)
      *
-     * Default: 0
+     * Default: #PJSUA_DEFAULT_SRTP_SECURE_SIGNALING
      */
     int		     srtp_secure_signaling;
+#endif
 
 } pjsua_acc_config;
 

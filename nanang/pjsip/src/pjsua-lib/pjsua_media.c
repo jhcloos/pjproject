@@ -749,10 +749,13 @@ pj_status_t pjsua_media_channel_init(pjsua_call_id call_id,
 				     int security_level)
 {
     pjsua_call *call = &pjsua_var.calls[call_id];
+
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     pjsua_acc *acc = &pjsua_var.acc[call->acc_id];
     pjmedia_srtp_setting srtp_opt;
     pjmedia_transport *srtp;
     pj_status_t status;
+#endif
 
     PJ_UNUSED_ARG(role);
 
@@ -766,6 +769,7 @@ pj_status_t pjsua_media_channel_init(pjsua_call_id call_id,
     /* Stop media transport (for good measure!) */
     pjmedia_transport_media_stop(call->med_tp);
 
+#if defined(PJMEDIA_HAS_SRTP) && (PJMEDIA_HAS_SRTP != 0)
     /* Check if SRTP requires secure signaling */
     if (acc->cfg.use_srtp != PJMEDIA_SRTP_DISABLED) {
 	if (security_level < acc->cfg.srtp_secure_signaling) {
@@ -786,6 +790,10 @@ pj_status_t pjsua_media_channel_init(pjsua_call_id call_id,
     /* Set SRTP as current media transport */
     call->med_orig = call->med_tp;
     call->med_tp = srtp;
+#else
+    call->med_orig = call->med_tp;
+    PJ_UNUSED_ARG(security_level);
+#endif
 
     return PJ_SUCCESS;
 }
