@@ -142,8 +142,8 @@ PJ_DEF(void) pjsua_acc_config_default(pjsua_acc_config *cfg)
     cfg->require_100rel = pjsua_var.ua_cfg.require_100rel;
     cfg->ka_interval = 15;
     cfg->ka_data = pj_str("\r\n");
-    cfg->use_srtp = PJMEDIA_SRTP_DISABLED;
-    cfg->srtp_secure_signaling = 0;
+    cfg->use_srtp = pjsua_var.ua_cfg.use_srtp;
+    cfg->srtp_secure_signaling = pjsua_var.ua_cfg.srtp_secure_signaling;
 }
 
 PJ_DEF(void) pjsua_buddy_config_default(pjsua_buddy_config *cfg)

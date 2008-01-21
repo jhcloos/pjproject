@@ -805,6 +805,7 @@ static pj_status_t parse_args(int argc, char *argv[],
 		PJ_LOG(1,(THIS_FILE, "Invalid value for --use-srtp option"));
 		return -1;
 	    }
+	    app_config.cfg.use_srtp = use_srtp;
 	    break;
 
 	case OPT_RTP_PORT:

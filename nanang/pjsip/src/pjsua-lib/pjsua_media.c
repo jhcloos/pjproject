@@ -776,6 +776,7 @@ pj_status_t pjsua_media_channel_init(pjsua_call_id call_id,
     /* Always create SRTP adapter */
     pjmedia_srtp_setting_default(&srtp_opt);
     srtp_opt.close_member_tp = PJ_FALSE;
+    srtp_opt.use = acc->cfg.use_srtp;
     status = pjmedia_transport_srtp_create(pjsua_var.med_endpt, 
 					   call->med_tp,
 					   &srtp_opt, &srtp);
