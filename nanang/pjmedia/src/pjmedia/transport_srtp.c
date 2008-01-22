@@ -181,9 +181,6 @@ static pjmedia_transport_op transport_srtp_op =
     &transport_destroy
 };
 
-char * octet_string_hex_string(const void *s, int length);
-
-
 const char* get_libsrtp_errstr(int err)
 {
 #if defined(PJ_HAS_ERROR_STRING) && (PJ_HAS_ERROR_STRING != 0)
@@ -343,7 +340,7 @@ PJ_DEF(pj_status_t) pjmedia_transport_srtp_create(
 	pjmedia_srtp_setting_default(&srtp->setting);
     }
 
-    status = pj_lock_create_null_mutex(pool, pool->obj_name, &srtp->mutex);
+    status = pj_lock_create_recursive_mutex(pool, pool->obj_name, &srtp->mutex);
     if (status != PJ_SUCCESS) {
 	pj_pool_release(pool);
 	return status;
@@ -633,7 +630,7 @@ static pj_status_t transport_send_rtcp(pjmedia_transport *tp,
     err_status_t err;
 
     if (srtp->bypass_srtp)
-	return pjmedia_transport_send_rtp(srtp->real_tp, pkt, size);
+	return pjmedia_transport_send_rtcp(srtp->real_tp, pkt, size);
 
     if (!srtp->session_inited)
 	return PJ_SUCCESS;
@@ -672,7 +669,7 @@ static pj_status_t transport_destroy  (pjmedia_transport *tp)
     transport_srtp *srtp = (transport_srtp *) tp;
     pj_status_t status;
 
-    pj_lock_destroy(srtp->mutex);
+    pj_lock_acquire(srtp->mutex);
 
     pjmedia_transport_detach(tp, NULL);
     
@@ -682,6 +679,9 @@ static pj_status_t transport_destroy  (pjmedia_transport *tp)
 
     status = pjmedia_transport_srtp_stop(tp);
 
+    pj_lock_release(srtp->mutex);
+
+    pj_lock_destroy(srtp->mutex);
     pj_pool_release(srtp->pool);
 
     return status;
@@ -713,7 +713,8 @@ static void srtp_rtp_cb( void *user_data, const void *pkt, pj_ssize_t size)
     if (err == err_status_ok) {
 	srtp->rtp_cb(srtp->user_data, srtp->rx_buffer, len);
     } else {
-	PJ_LOG(5, (THIS_FILE, "Failed to unprotect SRTP"));
+	PJ_LOG(5, (THIS_FILE, "Failed to unprotect SRTP size=%d, err=%d", 
+		   size, err));
     }
 
     pj_lock_release(srtp->mutex);
@@ -745,7 +746,8 @@ static void srtp_rtcp_cb( void *user_data, const void *pkt, pj_ssize_t size)
     if (err == err_status_ok) {
 	srtp->rtcp_cb(srtp->user_data, srtp->rx_buffer, len);
     } else {
-	PJ_LOG(5, (THIS_FILE, "Failed to unprotect SRTCP"));
+	PJ_LOG(5, (THIS_FILE, "Failed to unprotect SRTCP size=%d, err=%d",
+		   size, err));
     }
     
     pj_lock_release(srtp->mutex);
@@ -797,8 +799,10 @@ static pj_status_t generate_crypto_attr_value(pj_pool_t *pool,
 		if (key[i] == 0) key_ok = PJ_FALSE;
 
 	} while (!key_ok);
-	key[crypto_suites[cs_idx].cipher_key_len] = '\0';
-	pj_strdup2(pool, &crypto->key, key);
+	crypto->key.ptr = pj_pool_zalloc(pool, 
+					 crypto_suites[cs_idx].cipher_key_len);
+	pj_memcpy(crypto->key.ptr, key, crypto_suites[cs_idx].cipher_key_len);
+	crypto->key.slen = crypto_suites[cs_idx].cipher_key_len;
     }
 
     if (crypto->key.slen != (pj_ssize_t)crypto_suites[cs_idx].cipher_key_len)
@@ -964,7 +968,7 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 	for (i=0; i<srtp->setting.crypto_count; ++i) {
 	    /* Offer crypto-suites based on setting. */
 	    buffer_len = MAXLEN;
-	    status = generate_crypto_attr_value(pool, buffer, &buffer_len,
+	    status = generate_crypto_attr_value(srtp->pool, buffer, &buffer_len,
 						&srtp->setting.crypto[i],
 						i+1);
 	    if (status != PJ_SUCCESS)
@@ -973,7 +977,7 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 	    /* If buffer_len==0, just skip the crypto attribute. */
 	    if (buffer_len) {
 		pj_strset(&attr_value, buffer, buffer_len);
-		attr = pjmedia_sdp_attr_create(pool, ID_CRYPTO.ptr, 
+		attr = pjmedia_sdp_attr_create(srtp->pool, ID_CRYPTO.ptr, 
 					       &attr_value);
 		m_loc->attr[m_loc->attr_count++] = attr;
 	    }
@@ -1001,7 +1005,7 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 
 	    has_crypto_attr = PJ_TRUE;
 
-	    status = parse_attr_crypto(pool, m_rem->attr[i], 
+	    status = parse_attr_crypto(srtp->pool, m_rem->attr[i], 
 				       &tmp_rx_crypto, &tags[cr_attr_count]);
 	    if (status != PJ_SUCCESS)
 		return status;
@@ -1021,6 +1025,18 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 				   &srtp->setting.crypto[j].name) == 0)
 		    {
 			int cs_idx = get_crypto_idx(&tmp_rx_crypto.name);
+
+			/* Force to use test key */
+			//char *hex_test_key = "58b29c5c8f42308120ce857e439f2d"
+			//		     "7810a8b10ad0b1446be5470faea496";
+			//pj_str_t* test_key = &srtp->setting.crypto[j].key;
+			//char  *raw_test_key = pj_pool_zalloc(srtp->pool, 64);
+			//hex_string_to_octet_string(
+			//		raw_test_key,
+			//		hex_test_key,
+			//		strlen(hex_test_key));
+			//pj_strset(test_key, raw_test_key, 
+			//	  crypto_suites[cs_idx].cipher_key_len);
 
 			if (tmp_rx_crypto.key.slen != 
 			    (int)crypto_suites[cs_idx].cipher_key_len)
@@ -1069,7 +1085,7 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 	 * and rem_tag contains matched offer tag.
 	 */
 	buffer_len = MAXLEN;
-	status = generate_crypto_attr_value(pool, buffer, &buffer_len,
+	status = generate_crypto_attr_value(srtp->pool, buffer, &buffer_len,
 					    &srtp->tx_policy,
 					    chosen_tag);
 	if (status != PJ_SUCCESS)
@@ -1078,7 +1094,8 @@ static pj_status_t transport_media_create(pjmedia_transport *tp,
 	/* If buffer_len==0, just skip the crypto attribute. */
 	if (buffer_len) {
 	    pj_strset(&attr_value, buffer, buffer_len);
-	    attr = pjmedia_sdp_attr_create(pool, ID_CRYPTO.ptr, &attr_value);
+	    attr = pjmedia_sdp_attr_create(srtp->pool, ID_CRYPTO.ptr, 
+					   &attr_value);
 	    m_loc->attr[m_loc->attr_count++] = attr;
 	}
 
@@ -1161,7 +1178,7 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
 
 	    has_crypto_attr = PJ_TRUE;
 
-	    status = parse_attr_crypto(pool, m_rem->attr[i], 
+	    status = parse_attr_crypto(srtp->pool, m_rem->attr[i], 
 				       &tmp_tx_crypto, &rem_tag);
 	    if (status != PJ_SUCCESS)
 		return status;
