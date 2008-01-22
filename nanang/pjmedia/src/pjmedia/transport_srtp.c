@@ -1174,7 +1174,7 @@ static pj_status_t transport_media_start(pjmedia_transport *tp,
 	    }
 
 	    /* match the crypto name */
-	    if (pj_stricmp(&srtp->rx_policy.name, 
+	    if (pj_stricmp(&tmp_tx_crypto.name, 
 		&srtp->setting.crypto[rem_tag-1].name) != 0)
 	    {
 		DEACTIVATE_MEDIA(pool, m_loc);
