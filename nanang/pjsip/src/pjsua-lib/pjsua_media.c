@@ -913,7 +913,7 @@ static void dtmf_callback(pjmedia_stream *strm, void *user_data,
     if (pjsua_var.ua_cfg.cb.on_dtmf_digit) {
 	pjsua_call_id call_id;
 
-	call_id = (pjsua_call_id)user_data;
+	call_id = (pjsua_call_id)(long)user_data;
 	pjsua_var.ua_cfg.cb.on_dtmf_digit(call_id, digit);
     }
 }
@@ -1034,7 +1034,7 @@ pj_status_t pjsua_media_channel_update(pjsua_call_id call_id,
 	if (pjsua_var.ua_cfg.cb.on_dtmf_digit) {
 	    pjmedia_session_set_dtmf_callback(call->session, 0, 
 					      &dtmf_callback, 
-					      (void*)(call->index));
+					      (void*)(long)(call->index));
 	}
 
 	/* Get the port interface of the first stream in the session.
