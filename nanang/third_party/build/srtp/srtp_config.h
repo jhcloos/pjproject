@@ -99,14 +99,19 @@
 #define HAVE_UINT32_T	    1
 #define HAVE_UINT64_T	    1
 
-typedef pj_uint8_t	    uint8_t;
-typedef pj_uint16_t	    uint16_t;
-typedef pj_uint32_t	    uint32_t;
-typedef pj_uint64_t	    uint64_t;
-typedef pj_int8_t	    int8_t;
-typedef pj_int16_t	    int16_t;
-typedef pj_int32_t	    int32_t;
-typedef pj_int64_t	    int64_t;
+/* Define to 1 if you have the <stdint.h> header file. */
+#if defined(PJ_HAS_STDINT_H) && PJ_HAS_STDINT_H!=0
+#   define HAVE_STDINT_H    1
+#else
+    typedef pj_uint8_t	    uint8_t;
+    typedef pj_uint16_t	    uint16_t;
+    typedef pj_uint32_t	    uint32_t;
+    typedef pj_uint64_t	    uint64_t;
+    typedef pj_int8_t	    int8_t;
+    typedef pj_int16_t	    int16_t;
+    typedef pj_int32_t	    int32_t;
+    typedef pj_int64_t	    int64_t;
+#endif
 
 #define SIZEOF_UNSIGNED_LONG	    (sizeof(unsigned long))
 #define SIZEOF_UNSIGNED_LONG_LONG   8
@@ -159,8 +164,6 @@ typedef pj_int64_t	    int64_t;
 /* Define to 1 if you have the <machine/types.h> header file. */
 /* #undef HAVE_MACHINE_TYPES_H */
 
-/* Define to 1 if you have the <stdint.h> header file. */
-/* #undef HAVE_STDINT_H */
 
 /* Define to 1 if you have the <strings.h> header file. */
 //#define HAVE_STRINGS_H 1
