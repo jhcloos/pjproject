@@ -1,0 +1,61 @@
+TARGET 		symbian_ua.exe
+TARGETTYPE 	exe
+UID		0x0 0xA000000D
+
+SOURCEPATH	..\pjsip-apps\src\symbian_ua
+
+MACRO		PJ_M_I386=1
+MACRO		PJ_SYMBIAN=1
+
+#if defined(PJ_BUILD_DLL)
+	MACRO		PJ_DLL=1
+#endif
+
+// Source files
+
+SOURCE	ua.cpp
+SOURCE	main_symbian.cpp
+
+DOCUMENT ua.h
+
+SYSTEMINCLUDE	..\pjlib\include
+SYSTEMINCLUDE	..\pjlib-util\include
+SYSTEMINCLUDE	..\pjnath\include
+SYSTEMINCLUDE	..\pjmedia\include
+SYSTEMINCLUDE	..\pjsip\include
+
+SYSTEMINCLUDE	\epoc32\include
+SYSTEMINCLUDE	\epoc32\include\libc
+
+#if defined(PJ_BUILD_DLL)
+	LIBRARY		pjsua_lib.lib pjsip_ua.lib
+	LIBRARY		pjsip_simple.lib pjsip.lib pjsdp.lib pjmedia.lib
+	LIBRARY		pjnath.lib pjlib_util.lib pjlib.lib
+	LIBRARY		symbian_audio.lib
+	LIBRARY		libgsmcodec.lib
+#else
+	STATICLIBRARY	pjsua_lib.lib pjsip_ua.lib
+	STATICLIBRARY	pjsip_simple.lib pjsip.lib pjsdp.lib pjmedia.lib
+	STATICLIBRARY	pjnath.lib pjlib_util.lib pjlib.lib
+	STATICLIBRARY	symbian_audio.lib
+	STATICLIBRARY	libgsmcodec.lib
+#endif
+
+#ifdef WINSCW
+	STATICLIBRARY   eexe.lib ecrt0.lib
+#endif
+
+LIBRARY		esock.lib insock.lib charconv.lib euser.lib estlib.lib 
+LIBRARY 	mediaclientaudiostream.lib
+LIBRARY 	mediaclientaudioinputstream.lib
+
+CAPABILITY	NetworkServices LocalServices ReadUserData WriteUserData UserEnvironment 
+
+START RESOURCE  symbian_ua_reg.rss
+	TARGETPATH      \private\10003a3f\apps
+END
+
+// The default 8KB seems to be insufficient with all bells and
+// whistles turned on
+EPOCSTACKSIZE	12288
+
