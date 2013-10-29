@@ -794,6 +794,7 @@ with_opencore_amrwbenc
 enable_opencore_amr
 with_silk
 enable_silk
+with_zlib
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1489,6 +1490,7 @@ Optional Packages:
   --with-opencore-amrwbenc=DIR
                           Specify alternate libvo-amrwbenc prefix
   --with-silk=DIR         Specify alternate SILK prefix
+  --without-zlib          Disable support for zlib
 
 Some influential environment variables:
   CC          C compiler command
@@ -7656,6 +7658,67 @@ $as_echo "SILK library found, SILK support enabled" >&6; }
 
 fi
 
+
+
+# Check whether --with-zlib was given.
+if test "${with_zlib+set}" = set; then :
+  withval=$with_zlib;
+else
+  with_zlib=yes
+
+fi
+
+
+if test "x$with_zlib" != xno; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for deflate in -lz" >&5
+$as_echo_n "checking for deflate in -lz... " >&6; }
+if ${ac_cv_lib_z_deflate+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lz  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char deflate ();
+int
+main ()
+{
+return deflate ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_z_deflate=yes
+else
+  ac_cv_lib_z_deflate=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_z_deflate" >&5
+$as_echo "$ac_cv_lib_z_deflate" >&6; }
+if test "x$ac_cv_lib_z_deflate" = xyes; then :
+
+$as_echo "#define PJ_HAS_ZLIB 1" >>confdefs.h
+
+
+else
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "zlib test failed (--without-zlib to disable)
+See \`config.log' for more details" "$LINENO" 5; }
+fi
+
+fi
 
 
 
