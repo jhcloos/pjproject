@@ -165,6 +165,7 @@ static void*	    int_parse_other_uri(pj_scanner *scanner,
 static void	    parse_hdr_end( pj_scanner *scanner );
 
 static pjsip_hdr*   parse_hdr_accept( pjsip_parse_ctx *ctx );
+static pjsip_hdr*   parse_hdr_accept_encoding( pjsip_parse_ctx *ctx );
 static pjsip_hdr*   parse_hdr_allow( pjsip_parse_ctx *ctx );
 static pjsip_hdr*   parse_hdr_call_id( pjsip_parse_ctx *ctx);
 static pjsip_hdr*   parse_hdr_contact( pjsip_parse_ctx *ctx);
@@ -406,6 +407,9 @@ static pj_status_t init_parser()
      */
 
     status = pjsip_register_hdr_parser( "Accept", NULL, &parse_hdr_accept);
+    PJ_ASSERT_RETURN(status == PJ_SUCCESS, status);
+
+    status = pjsip_register_hdr_parser( "Accept-Encoding", NULL, &parse_hdr_accept_encoding);
     PJ_ASSERT_RETURN(status == PJ_SUCCESS, status);
 
     status = pjsip_register_hdr_parser( "Allow", NULL, &parse_hdr_allow);
@@ -1742,6 +1746,14 @@ static pjsip_hdr* parse_hdr_accept(pjsip_parse_ctx *ctx)
     pjsip_accept_hdr *accept = pjsip_accept_hdr_create(ctx->pool);
     parse_generic_array_hdr(accept, ctx->scanner);
     return (pjsip_hdr*)accept;
+}
+
+/* Parse Accept-Encoding header. */
+static pjsip_hdr* parse_hdr_accept_encoding(pjsip_parse_ctx *ctx)
+{
+    pjsip_accept_encoding_hdr *accept_enc = pjsip_accept_encoding_hdr_create(ctx->pool);
+    parse_generic_array_hdr(accept_enc, ctx->scanner);
+    return (pjsip_hdr*)accept_enc;
 }
 
 /* Parse Allow header. */

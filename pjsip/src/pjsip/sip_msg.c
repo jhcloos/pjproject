@@ -974,6 +974,29 @@ PJ_DEF(pjsip_accept_hdr*) pjsip_accept_hdr_create(pj_pool_t *pool)
 
 ///////////////////////////////////////////////////////////////////////////////
 /*
+ * Accept-Encoding header.
+ */
+PJ_DEF(pjsip_accept_encoding_hdr*) pjsip_accept_encoding_hdr_init( pj_pool_t *pool,
+								   void *mem )
+{
+    pjsip_accept_encoding_hdr *hdr = (pjsip_accept_encoding_hdr*) mem;
+
+    PJ_UNUSED_ARG(pool);
+
+    init_hdr(hdr, PJSIP_H_ACCEPT_ENCODING, &generic_array_hdr_vptr);
+    hdr->count = 0;
+    return hdr;
+}
+
+PJ_DEF(pjsip_accept_encoding_hdr*) pjsip_accept_encoding_hdr_create(pj_pool_t *pool)
+{
+    void *mem = pj_pool_alloc(pool, sizeof(pjsip_accept_encoding_hdr));
+    return pjsip_accept_encoding_hdr_init(pool, mem);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+/*
  * Allow header.
  */
 

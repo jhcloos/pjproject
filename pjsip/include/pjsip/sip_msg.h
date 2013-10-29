@@ -206,7 +206,7 @@ typedef enum pjsip_hdr_e
      * DO NOT CHANGE THE VALUE/ORDER OF THE HEADER IDs!!!.
      */
     PJSIP_H_ACCEPT,
-    PJSIP_H_ACCEPT_ENCODING_UNIMP,	/* N/A, use pjsip_generic_string_hdr */
+    PJSIP_H_ACCEPT_ENCODING,
     PJSIP_H_ACCEPT_LANGUAGE_UNIMP,	/* N/A, use pjsip_generic_string_hdr */
     PJSIP_H_ALERT_INFO_UNIMP,		/* N/A, use pjsip_generic_string_hdr */
     PJSIP_H_ALLOW,
@@ -1167,7 +1167,7 @@ PJ_DECL(pjsip_generic_array_hdr*) pjsip_generic_array_hdr_init(pj_pool_t *pool,
 typedef pjsip_generic_array_hdr pjsip_accept_hdr;
 
 /** Maximum fields in Accept header. */
-#define PJSIP_MAX_ACCEPT_COUNT	PJSIP_GENERIC_ARRAY_MAX_COUNT
+#define PJSIP_MAX_ACCEPT_COUNT PJSIP_GENERIC_ARRAY_MAX_COUNT
 
 /**
  * Create new Accept header instance.
@@ -1915,12 +1915,41 @@ pjsip_warning_hdr_create_from_status( pj_pool_t *pool,
 				      pj_status_t status);
 
 /* **************************************************************************/
+
 /** Accept-Encoding header. */
-typedef pjsip_generic_string_hdr pjsip_accept_encoding_hdr;
+typedef pjsip_generic_array_hdr pjsip_accept_encoding_hdr;
 
-/** Create Accept-Encoding header. */
-#define pjsip_accept_encoding_hdr_create pjsip_generic_string_hdr_create
+/** Maximum fields in Accept header. */
+#define PJSIP_MAX_ACCEPT_ENCODING_COUNT PJSIP_GENERIC_ARRAY_MAX_COUNT
 
+/**
+ * Create new Accept-Encoding header instance.
+ *
+ * @param pool	    The pool.
+ *
+ * @return	    New Accept header instance.
+ */
+PJ_DECL(pjsip_accept_encoding_hdr*) pjsip_accept_encoding_hdr_create(pj_pool_t *pool);
+
+/**
+ * Initialize a preallocated memory with the header structure. This function
+ * should only be called when application uses its own memory allocation to
+ * allocate memory block for the specified header (e.g. in C++, when the 
+ * header is allocated with "new" operator).
+ * For normal applications, they should use pjsip_xxx_hdr_create() instead,
+ * which allocates memory and initialize it in one go.
+ *
+ * @param pool	    Pool for additional memory allocation if required.
+ * @param mem	    Pre-allocated memory to be initialized as the header.
+ *
+ * @return	    The header instance, which points to the same memory 
+ *		    location as the mem argument.
+ */
+PJ_DECL(pjsip_accept_encoding_hdr*) pjsip_accept_encoding_hdr_init( pj_pool_t *pool,
+								    void *mem );
+
+
+/* **************************************************************************/
 /** Accept-Language header. */
 typedef pjsip_generic_string_hdr pjsip_accept_lang_hdr;
 
