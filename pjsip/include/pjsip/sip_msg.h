@@ -216,7 +216,7 @@ typedef enum pjsip_hdr_e
     PJSIP_H_CALL_INFO_UNIMP,		/* N/A, use pjsip_generic_string_hdr */
     PJSIP_H_CONTACT,
     PJSIP_H_CONTENT_DISPOSITION_UNIMP,	/* N/A, use pjsip_generic_string_hdr */
-    PJSIP_H_CONTENT_ENCODING_UNIMP,	/* N/A, use pjsip_generic_string_hdr */
+    PJSIP_H_CONTENT_ENCODING,
     PJSIP_H_CONTENT_LANGUAGE_UNIMP,	/* N/A, use pjsip_generic_string_hdr */
     PJSIP_H_CONTENT_LENGTH,
     PJSIP_H_CONTENT_TYPE,
@@ -1948,7 +1948,6 @@ PJ_DECL(pjsip_accept_encoding_hdr*) pjsip_accept_encoding_hdr_create(pj_pool_t *
 PJ_DECL(pjsip_accept_encoding_hdr*) pjsip_accept_encoding_hdr_init( pj_pool_t *pool,
 								    void *mem );
 
-
 /* **************************************************************************/
 /** Accept-Language header. */
 typedef pjsip_generic_string_hdr pjsip_accept_lang_hdr;
@@ -1983,8 +1982,8 @@ typedef pjsip_generic_string_hdr pjsip_content_disposition_hdr;
 /** Content-Encoding header. */
 typedef pjsip_generic_string_hdr pjsip_content_encoding_hdr;
 
-/** Create Content-Encoding header. */
-#define pjsip_content_encoding_hdr_create pjsip_generic_string_hdr_create
+/** Create Content-Language header. */
+#define pjsip_content_lang_hdr_create pjsip_generic_string_hdr_create
 
 /** Content-Language header. */
 typedef pjsip_generic_string_hdr pjsip_content_lang_hdr;

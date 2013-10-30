@@ -169,6 +169,7 @@ static pjsip_hdr*   parse_hdr_accept_encoding( pjsip_parse_ctx *ctx );
 static pjsip_hdr*   parse_hdr_allow( pjsip_parse_ctx *ctx );
 static pjsip_hdr*   parse_hdr_call_id( pjsip_parse_ctx *ctx);
 static pjsip_hdr*   parse_hdr_contact( pjsip_parse_ctx *ctx);
+static pjsip_hdr*   parse_hdr_content_encoding( pjsip_parse_ctx *ctx );
 static pjsip_hdr*   parse_hdr_content_len( pjsip_parse_ctx *ctx );
 static pjsip_hdr*   parse_hdr_content_type( pjsip_parse_ctx *ctx );
 static pjsip_hdr*   parse_hdr_cseq( pjsip_parse_ctx *ctx );
@@ -419,6 +420,10 @@ static pj_status_t init_parser()
     PJ_ASSERT_RETURN(status == PJ_SUCCESS, status);
 
     status = pjsip_register_hdr_parser( "Contact", "m", &parse_hdr_contact);
+    PJ_ASSERT_RETURN(status == PJ_SUCCESS, status);
+
+    status = pjsip_register_hdr_parser( "Content-Encoding", "e", 
+                                        &parse_hdr_content_encoding);
     PJ_ASSERT_RETURN(status == PJ_SUCCESS, status);
 
     status = pjsip_register_hdr_parser( "Content-Length", "l", 
@@ -1848,6 +1853,14 @@ static pjsip_hdr* parse_hdr_contact( pjsip_parse_ctx *ctx )
     parse_hdr_end(scanner);
 
     return (pjsip_hdr*)first;
+}
+
+/* Parse Content-Encoding header. */
+static pjsip_hdr* parse_hdr_content_encoding(pjsip_parse_ctx *ctx)
+{
+    pjsip_content_encoding_hdr *content_enc = pjsip_content_encoding_hdr_create(ctx->pool);
+    parse_generic_string_hdr(content_enc, ctx->scanner);
+    return (pjsip_hdr*)content_enc;
 }
 
 /* Parse Content-Length header. */
