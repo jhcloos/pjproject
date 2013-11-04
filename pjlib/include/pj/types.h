@@ -145,6 +145,24 @@ typedef union pj_timestamp
 #endif
 } pj_timestamp;
 
+/**
+ * This structure represents sip body encodings.
+ * Each encoding includes a name and methods.
+ */
+struct pj_encoding_t
+{
+    /**< List's prev and next.  */
+    PJ_DECL_LIST_MEMBER(struct pj_encoding_t);
+
+    /** The name of the encoding, as used by Accept-Encoding and Content-Encoding. */
+    pj_str_t    name;
+
+    /** Methods. */
+    pj_status_t (*encode)(pj_pool_t *pool, char *dest, pj_size_t *dest_len,
+			  const char *src, const pj_size_t src_len);
+    pj_status_t (*decode)(pj_pool_t *pool, char *dest, pj_size_t *dest_len,
+			  const char *src, const pj_size_t src_len);
+};
 
 
 /**
